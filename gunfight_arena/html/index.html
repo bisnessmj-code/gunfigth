@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Gunfight Arena</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/css/bootstrap.min.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- Kill Feed (pour afficher les messages de kill) -->
+    <div id="killfeed-ui"></div>
+    
+    <!-- UI de sélection de zone -->
+    <div id="arena-ui" class="container" style="display: none;">
+        <h2>Choisissez la zone d'arène</h2>
+        <div id="zone-list" class="zone-list row"></div>
+        <button id="close-btn" class="btn btn-danger mt-3">x</button>
+    </div>
+
+    <!-- UI du leaderboard -->
+    <div id="stats-ui" class="container" style="display: none;">
+        <h2>Leaderboard Gunfight Arena</h2>
+        <div id="stats-list" class="stats-list row"></div>
+        <button id="stats-close-btn" class="btn btn-danger mt-3">Fermer</button>
+    </div>
+    
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
