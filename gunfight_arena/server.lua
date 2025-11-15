@@ -804,3 +804,52 @@ Citizen.CreateThread(function()
         UpdateGlobalLeaderboard()
     end
 end)
+
+-- ================================================================================================
+-- EVENT : DEMANDE DE MISE À JOUR DES ZONES
+-- ================================================================================================
+RegisterNetEvent('gunfightarena:requestZoneUpdate')
+AddEventHandler('gunfightarena:requestZoneUpdate', function()
+    DebugLog("=== DEMANDE MISE À JOUR ZONES ===")
+    DebugLog("Joueur: " .. source)
+    updateZonePlayers()
+    DebugLog("=================================")
+end)
+
+-- ================================================================================================
+-- COMMANDE ADMIN : FORCER LA SORTIE D'UN JOUEUR DE L'ARÈNE
+-- ================================================================================================
+RegisterCommand('gfkick', function(source, args, rawCommand)
+    if source == 0 then  -- Console uniquement ou vérifiez les permissions admin
+        local targetId = tonumber(args[1])
+        
+        if not targetId then
+            print("^1Usage: /gfkick [playerID]^0")
+            return
+        end
+        
+        if arenaPlayers[targetId] then
+            DebugLog("=== KICK FORCÉ DU JOUEUR " .. targetId .. " ===", "error")
+            
+            -- Retirer de l'arène
+            arenaPlayers[targetId] = nil
+            local zone = playerZone[targetId]
+            
+            if zone then
+                zonePlayerCounts[zone] = math.max((zonePlayerCounts[zone] or 1) - 1, 0)
+                playerZone[targetId] = nil
+            end
+            
+            RemovePlayerFromInstance(targetId)
+            killStreaks[targetId] = 0
+            updateZonePlayers()
+            
+            TriggerClientEvent('gunfightarena:exit', targetId)
+            TriggerClientEvent('esx:showNotification', targetId, "^1Vous avez été retiré de l'arène par un administrateur.")
+            
+            print("^2Joueur " .. targetId .. " retiré de l'arène^0")
+        else
+            print("^1Le joueur " .. targetId .. " n'est pas dans l'arène^0")
+        end
+    end
+end, true)

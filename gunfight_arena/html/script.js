@@ -323,6 +323,8 @@ function closeStatsUI() {
         statsUI.style.display = 'none';
     }
     
+	// Libérer le focus NUI
+    postNUIMessage('closeStatsUI', {});
     // NE PAS libérer le focus ici - juste fermer la fenêtre des stats
     console.log("Stats UI fermée");
 }
@@ -384,7 +386,7 @@ function closePersonalStatsUI() {
     if (personalStatsUI) {
         personalStatsUI.style.display = 'none';
     }
-    
+    postNUIMessage('closePersonalStatsUI', {});
     // NE PAS libérer le focus ici - juste fermer la fenêtre des stats
     console.log("Stats personnelles fermées");
 }
@@ -439,7 +441,7 @@ function closeGlobalLeaderboardUI() {
     if (globalLeaderboardUI) {
         globalLeaderboardUI.style.display = 'none';
     }
-    
+    postNUIMessage('closeGlobalLeaderboardUI', {});
     // NE PAS libérer le focus ici - juste fermer la fenêtre du classement
     console.log("Classement global fermé");
 }
@@ -595,6 +597,25 @@ function GetParentResourceName() {
     return 'gunfight_arena';
 }
 
+// ESC key to close UIs
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+        const arenaUI = document.getElementById('arena-ui');
+        const statsUI = document.getElementById('stats-ui');
+        const personalStatsUI = document.getElementById('personal-stats-ui');
+        const globalLeaderboardUI = document.getElementById('global-leaderboard-ui');
+        
+        if (arenaUI && arenaUI.style.display === 'flex') {
+            closeUI();
+        } else if (statsUI && statsUI.style.display === 'flex') {
+            closeStatsUI();
+        } else if (personalStatsUI && personalStatsUI.style.display === 'flex') {
+            closePersonalStatsUI();
+        } else if (globalLeaderboardUI && globalLeaderboardUI.style.display === 'flex') {
+            closeGlobalLeaderboardUI();
+        }
+    }
+});
 // ================================
 // CONSOLE INFO
 // ================================

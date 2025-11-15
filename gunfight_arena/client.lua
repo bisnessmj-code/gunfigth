@@ -114,6 +114,9 @@ Citizen.CreateThread(function()
                 if IsControlJustPressed(0, Config.InteractKey) and not showingUI then
                     DebugLog("=== OUVERTURE UI ===", "ui")
                     DebugLog("Joueur a appuyé sur E", "ui")
+
+                	-- AJOUT : Demander mise à jour des zones au serveur
+                    TriggerServerEvent('gunfightarena:requestZoneUpdate')
                     
                     -- Préparation des données des zones
                     local zoneData = {}
@@ -695,4 +698,52 @@ AddEventHandler('gunfightarena:lobbyScoreboardData', function(scoreboard)
     SendNUIMessage({ action = "showLobbyScoreboard", stats = scoreboard })
     DebugLog("Lobby scoreboard affiché", "success")
     DebugLog("==================================")
+end)
+
+-- ================================================================================================
+-- THREAD : DÉTECTION DE TÉLÉPORTATION HORS DE LA ZONE
+-- ================================================================================================
+Citizen.CreateThread(function()
+    DebugLog("Thread détection téléportation démarré")
+    
+    local lastPosition = nil
+    
+    while true do
+        Citizen.Wait(1000)  -- Vérification toutes les secondes
+        
+        if isInArena and currentZone then
+            local playerPed = PlayerPedId()
+            local currentPos = GetEntityCoords(playerPed)
+            
+            if lastPosition then
+                -- Calculer la distance parcourue en 1 seconde
+                local distance = #(currentPos - lastPosition)
+                
+                -- Si la distance est supérieure à 500 unités, c'est une téléportation
+                if distance > 500 then
+                    DebugLog("=== TÉLÉPORTATION DÉTECTÉE ===", "error")
+                    DebugLog("Distance parcourue: " .. distance .. " unités", "error")
+                    
+                    -- Vérifier si le joueur est toujours dans la zone
+                    local zoneCfg = Config["Zone" .. currentZone]
+                    if zoneCfg then
+                        local distFromZone = #(currentPos - zoneCfg.spawn.pos)
+                        
+                        if distFromZone > zoneCfg.radius then
+                            DebugLog("Joueur téléporté hors de la zone, sortie automatique", "error")
+                            TriggerEvent('gunfightarena:exitZone')
+                        else
+                            DebugLog("Téléportation dans la zone, OK", "success")
+                        end
+                    end
+                    
+                    DebugLog("==============================")
+                end
+            end
+            
+            lastPosition = currentPos
+        else
+            lastPosition = nil
+        end
+    end
 end)
