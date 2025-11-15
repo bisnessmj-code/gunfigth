@@ -1,19 +1,52 @@
+-- ================================================================================================
+-- GUNFIGHT ARENA - CLIENT
+-- ================================================================================================
+-- Gestion côté client : UI, zones, respawn, stamina, marqueurs
+-- ================================================================================================
+
+-- Vérification de CircleZone (dépendance PolyZone)
 if not CircleZone then
+    print("^1[GF-Client ERROR]^0 CircleZone non trouvé! PolyZone est requis.")
     return
 end
 
-local isInArena = false
-local showingUI = false
-local arenaBlip = nil
-local arenaZone = nil
-local justExited = false
-local currentZone = nil  -- 1, 2, 3 ou 4
+-- ================================================================================================
+-- VARIABLES LOCALES
+-- ================================================================================================
+local isInArena = false                 -- Le joueur est-il dans une arène?
+local showingUI = false                 -- L'UI de sélection est-elle affichée?
+local arenaBlip = nil                   -- Blip de la zone d'arène
+local arenaZone = nil                   -- Zone PolyZone de l'arène
+local justExited = false                -- Empêche la réouverture immédiate du menu
+local currentZone = nil                 -- Zone actuelle du joueur (1, 2, 3 ou 4)
+local currentBucket = Config.LobbyBucket -- Bucket actuel du joueur
 
+-- Point du lobby (interaction)
 local lobbyPoint = vector3(Config.InteractionPoint.x, Config.InteractionPoint.y, Config.InteractionPoint.z)
 
--------------------------------------------------
--- Affichage de texte 3D
--------------------------------------------------
+-- ================================================================================================
+-- FONCTION : LOG DEBUG CLIENT
+-- ================================================================================================
+local function DebugLog(message, type)
+    if not Config.DebugClient then return end
+    
+    local prefix = "^6[GF-Client]^0"
+    if type == "error" then
+        prefix = "^1[GF-Client ERROR]^0"
+    elseif type == "success" then
+        prefix = "^2[GF-Client OK]^0"
+    elseif type == "ui" then
+        prefix = "^4[GF-UI]^0"
+    elseif type == "instance" then
+        prefix = "^5[GF-Instance]^0"
+    end
+    
+    print(prefix .. " " .. message)
+end
+
+-- ================================================================================================
+-- FONCTION : AFFICHAGE DE TEXTE 3D
+-- ================================================================================================
 function Draw3DText(x, y, z, text)
     local onScreen, _x, _y = World3dToScreen2d(x, y, z)
     if onScreen then
@@ -28,120 +61,207 @@ function Draw3DText(x, y, z, text)
     end
 end
 
--------------------------------------------------
--- Création du blip du lobby
--------------------------------------------------
-Citizen.CreateThread(function()
-    local blip = AddBlipForCoord(lobbyPoint.x, lobbyPoint.y, lobbyPoint.z)
-    SetBlipSprite(blip, 311)
-    SetBlipDisplay(blip, 4)
-    SetBlipScale(blip, 0.8)
-    SetBlipColour(blip, 1)
-    SetBlipAsShortRange(blip, true)
-    BeginTextCommandSetBlipName("STRING")
-    AddTextComponentSubstringPlayerName("Gunfight Lobby")
-    EndTextCommandSetBlipName(blip)
-end)
+-- ================================================================================================
+-- CRÉATION DU BLIP DU LOBBY
+-- ================================================================================================
+if Config.LobbyBlip.enabled then
+    Citizen.CreateThread(function()
+        DebugLog("=== CRÉATION BLIP LOBBY ===")
+        local blip = AddBlipForCoord(lobbyPoint.x, lobbyPoint.y, lobbyPoint.z)
+        SetBlipSprite(blip, Config.LobbyBlip.sprite)
+        SetBlipDisplay(blip, 4)
+        SetBlipScale(blip, Config.LobbyBlip.scale)
+        SetBlipColour(blip, Config.LobbyBlip.color)
+        SetBlipAsShortRange(blip, true)
+        BeginTextCommandSetBlipName("STRING")
+        AddTextComponentSubstringPlayerName(Config.LobbyBlip.name)
+        EndTextCommandSetBlipName(blip)
+        DebugLog("Blip créé aux coordonnées: " .. lobbyPoint, "success")
+        DebugLog("===========================")
+    end)
+end
 
--------------------------------------------------
--- Affichage du marqueur et de l'invite au lobby
--------------------------------------------------
+-- ================================================================================================
+-- THREAD : AFFICHAGE DU MARQUEUR ET INVITE AU LOBBY
+-- ================================================================================================
 Citizen.CreateThread(function()
+    DebugLog("Thread marqueur lobby démarré")
+    
     while true do
-        Citizen.Wait(0)
+        Citizen.Wait(Config.Threads.lobbyMarker)
+        
         local playerPed = PlayerPedId()
         local coords = GetEntityCoords(playerPed)
         local dist = #(coords - lobbyPoint)
         
-        if dist < 50.0 then
-            DrawMarker(1, lobbyPoint.x, lobbyPoint.y, lobbyPoint.z - 1.0,
-                0, 0, 0, 0, 0, 0,
-                Config.LobbyCircle.size, Config.LobbyCircle.size, 1.0,
-                Config.LobbyCircle.color.r, Config.LobbyCircle.color.g, Config.LobbyCircle.color.b, Config.LobbyCircle.color.a,
-                false, true, 2, false, nil, nil, false)
-            if dist < 2.0 and not justExited then
+        -- Affichage du marqueur si proche
+        if dist < Config.LobbyMarkerDistance then
+            DrawMarker(
+                1,  -- Type de marqueur (cylindre)
+                lobbyPoint.x, lobbyPoint.y, lobbyPoint.z - 1.0,
+                0, 0, 0,  -- Direction
+                0, 0, 0,  -- Rotation
+                Config.LobbyCircle.size, Config.LobbyCircle.size, 1.0,  -- Échelle
+                Config.LobbyCircle.color.r, Config.LobbyCircle.color.g, 
+                Config.LobbyCircle.color.b, Config.LobbyCircle.color.a,
+                false, true, 2, false, nil, nil, false
+            )
+            
+            -- Interaction si très proche
+            if dist < Config.LobbyInteractDistance and not justExited then
                 Draw3DText(lobbyPoint.x, lobbyPoint.y, lobbyPoint.z + 1.0, "Appuyez sur [E] pour rejoindre l'arène")
+                
                 if IsControlJustPressed(0, Config.InteractKey) and not showingUI then
-                    local zoneData = {
-                        { label = "Zone 1", image = Config.Zone1.spawn.image, zone = 1 },
-                        { label = "Zone 2", image = Config.Zone2.spawn.image, zone = 2 },
-                        { label = "Zone 3", image = Config.Zone3.spawn.image, zone = 3 },
-                        { label = "Zone 4", image = Config.Zone4.spawn.image, zone = 4 }
-                    }
+                    DebugLog("=== OUVERTURE UI ===", "ui")
+                    DebugLog("Joueur a appuyé sur E", "ui")
+                    
+                    -- Préparation des données des zones
+                    local zoneData = {}
+                    for i = 1, 4 do
+                        local zoneCfg = Config["Zone" .. i]
+                        if zoneCfg and zoneCfg.enabled then
+                            table.insert(zoneData, {
+                                label = "Zone " .. i,
+                                image = zoneCfg.spawn.image,
+                                zone = i
+                            })
+                            DebugLog("Zone " .. i .. " ajoutée à l'UI", "ui")
+                        end
+                    end
+                    
+                    -- Envoi à l'interface NUI
                     SetNuiFocus(true, true)
-                    SendNUIMessage({ action = "show", zones = zoneData })
+                    SendNUIMessage({
+                        action = "show",
+                        zones = zoneData
+                    })
                     showingUI = true
+                    DebugLog("UI ouverte, focus activé", "success")
+                    DebugLog("====================")
                 end
             end
         end
     end
 end)
 
--------------------------------------------------
--- Fermeture de l'UI via NUI callback
--------------------------------------------------
+-- ================================================================================================
+-- CALLBACK NUI : FERMETURE DE L'UI
+-- ================================================================================================
 RegisterNUICallback('closeUI', function(data, cb)
+    DebugLog("=== FERMETURE UI ===", "ui")
     SetNuiFocus(false, false)
     showingUI = false
+    DebugLog("UI fermée, focus désactivé", "success")
+    DebugLog("====================")
     cb('ok')
 end)
 
--------------------------------------------------
--- Choix de la zone d'arène via NUI callback
--------------------------------------------------
+-- ================================================================================================
+-- CALLBACK NUI : SÉLECTION D'UNE ZONE
+-- ================================================================================================
 RegisterNUICallback('zoneSelected', function(data, cb)
+    DebugLog("=== SÉLECTION ZONE ===", "ui")
+    DebugLog("Zone sélectionnée: " .. data.zone, "ui")
     TriggerServerEvent('gunfightarena:joinRequest', data.zone)
+    DebugLog("Requête envoyée au serveur", "success")
+    DebugLog("======================")
     cb('ok')
 end)
 
--------------------------------------------------
--- Gestion de l'entrée (et respawn) dans l'arène
--------------------------------------------------
+-- ================================================================================================
+-- EVENT : REJOINDRE/RESPAWN DANS L'ARÈNE
+-- ================================================================================================
 RegisterNetEvent('gunfightarena:join')
 AddEventHandler('gunfightarena:join', function(zoneIdentifier)
+    DebugLog("=== REJOINDRE/RESPAWN ARÈNE ===")
+    DebugLog("Zone identifier: " .. zoneIdentifier)
+    
     local playerPed = PlayerPedId()
     local spawnData = nil
 
+    -- Identifier = 0 : respawn aléatoire dans la zone actuelle
     if zoneIdentifier == 0 then
         if currentZone then
+            DebugLog("Respawn aléatoire dans la zone actuelle: " .. currentZone)
             local respawnPoints = Config["Zone" .. currentZone].respawnPoints
             spawnData = respawnPoints[math.random(1, #respawnPoints)]
+            DebugLog("Point de respawn sélectionné: " .. json.encode(spawnData))
+        else
+            DebugLog("Pas de zone actuelle pour le respawn!", "error")
         end
     else
+        -- Nouveau spawn : mise à jour de la zone actuelle
         currentZone = zoneIdentifier
         spawnData = Config["Zone" .. zoneIdentifier].spawn
+        DebugLog("Nouveau spawn dans la zone " .. zoneIdentifier)
+        DebugLog("Données de spawn: " .. json.encode(spawnData))
     end
 
+    -- Téléportation et réanimation
     if spawnData then
+        DebugLog("Téléportation du joueur...")
+        
+        -- Réanimation native de FiveM
         NetworkResurrectLocalPlayer(spawnData.pos.x, spawnData.pos.y, spawnData.pos.z, spawnData.heading, true, false)
         ClearPedTasksImmediately(playerPed)
         SetEntityHealth(playerPed, GetEntityMaxHealth(playerPed))
-        GiveWeaponToPed(playerPed, GetHashKey("weapon_pistol50"), 100, false, true)
-        SetPedAmmo(playerPed, GetHashKey("weapon_pistol50"), 100)
+        
+        DebugLog("Joueur réanimé", "success")
+        
+        -- Attribution de l'arme
+        GiveWeaponToPed(playerPed, GetHashKey(Config.WeaponHash), Config.WeaponAmmo, false, true)
+        SetPedAmmo(playerPed, GetHashKey(Config.WeaponHash), Config.WeaponAmmo)
+        DebugLog("Arme donnée: " .. Config.WeaponHash .. " avec " .. Config.WeaponAmmo .. " munitions")
+        
+        -- Invincibilité temporaire et transparence
         SetEntityInvincible(playerPed, true)
-        SetEntityAlpha(playerPed, 128, false)
-        Citizen.SetTimeout(2000, function()
-            SetEntityInvincible(playerPed, false)
+        SetEntityAlpha(playerPed, Config.SpawnAlpha, false)
+        DebugLog("Invincibilité activée pour " .. Config.InvincibilityTime .. "ms")
+        
+        Citizen.SetTimeout(Config.SpawnAlphaDuration, function()
             SetEntityAlpha(playerPed, 255, false)
+            DebugLog("Transparence désactivée")
         end)
+        
+        Citizen.SetTimeout(Config.InvincibilityTime, function()
+            SetEntityInvincible(playerPed, false)
+            DebugLog("Invincibilité désactivée", "success")
+        end)
+    else
+        DebugLog("Données de spawn introuvables!", "error")
     end
 
+    -- Marquage comme "dans l'arène"
     isInArena = true
-    TriggerEvent('esx:showNotification', "^2Vous êtes entré dans l'arène.")
+    TriggerEvent('esx:showNotification', Config.Messages.enterArena)
 
+    -- Création du blip de zone
     local zoneCfg = Config["Zone" .. currentZone]
-    if not arenaBlip then
+    if zoneCfg and not arenaBlip then
+        DebugLog("Création du blip de zone...")
         arenaBlip = AddBlipForRadius(zoneCfg.spawn.pos, zoneCfg.radius)
         SetBlipColour(arenaBlip, 1)
         SetBlipAlpha(arenaBlip, 128)
+        DebugLog("Blip de zone créé", "success")
     end
-    if not arenaZone then
-        arenaZone = CircleZone:Create(zoneCfg.spawn.pos, zoneCfg.radius, { name = "gunfight_zone" .. currentZone, debugPoly = false, useZ = true })
+    
+    -- Création de la zone PolyZone
+    if zoneCfg and not arenaZone then
+        DebugLog("Création de la CircleZone...")
+        arenaZone = CircleZone:Create(zoneCfg.spawn.pos, zoneCfg.radius, {
+            name = "gunfight_zone" .. currentZone,
+            debugPoly = Config.PolyZoneDebug,
+            useZ = true
+        })
+        DebugLog("CircleZone créée", "success")
+        
+        -- Thread de vérification de sortie de zone
         Citizen.CreateThread(function()
             while isInArena do
-                Citizen.Wait(500)
+                Citizen.Wait(Config.Threads.zoneCheck)
                 local playerPos = GetEntityCoords(PlayerPedId())
                 if arenaZone and not arenaZone:isPointInside(playerPos) then
+                    DebugLog("Joueur hors de la zone, déclenchement de la sortie", "error")
                     TriggerEvent('gunfightarena:exitZone')
                     break
                 end
@@ -149,49 +269,82 @@ AddEventHandler('gunfightarena:join', function(zoneIdentifier)
         end)
     end
 
+    -- Fermeture de l'UI si ouverte
     if showingUI then
         SetNuiFocus(false, false)
         showingUI = false
+        DebugLog("UI fermée après le spawn", "ui")
     end
+    
+    DebugLog("===============================", "success")
 end)
 
--------------------------------------------------
--- Gestion de la sortie de l'arène (zone ou commande)
--------------------------------------------------
+-- ================================================================================================
+-- EVENT : SORTIE DE LA ZONE D'ARÈNE
+-- ================================================================================================
 RegisterNetEvent('gunfightarena:exitZone')
 AddEventHandler('gunfightarena:exitZone', function()
+    DebugLog("=== SORTIE DE ZONE ===")
+    
     if isInArena then
         isInArena = false
         justExited = true
-        TriggerEvent('esx:showNotification', "^1Vous avez quitté l'arène.")
+        TriggerEvent('esx:showNotification', Config.Messages.exitArena)
+        
+        DebugLog("Attente de 3 secondes...")
         Citizen.Wait(3000)
+        
+        -- Nettoyage du blip
         if arenaBlip then
             RemoveBlip(arenaBlip)
             arenaBlip = nil
+            DebugLog("Blip supprimé")
         end
+        
+        -- Destruction de la zone
         if arenaZone then
             arenaZone:destroy()
             arenaZone = nil
+            DebugLog("Zone détruite")
         end
-        RemoveWeaponFromPed(PlayerPedId(), GetHashKey("weapon_pistol50"))
+        
+        -- Retrait de l'arme
+        RemoveWeaponFromPed(PlayerPedId(), GetHashKey(Config.WeaponHash))
+        DebugLog("Arme retirée")
+        
+        -- Téléportation au lobby
         SetEntityCoords(PlayerPedId(), Config.LobbySpawn.x, Config.LobbySpawn.y, Config.LobbySpawn.z)
         if Config.LobbySpawnHeading then
             SetEntityHeading(PlayerPedId(), Config.LobbySpawnHeading)
         end
+        DebugLog("Téléporté au lobby")
+        
         Citizen.Wait(1000)
         justExited = false
+        
+        -- Clear kill feed
         SendNUIMessage({ action = "clearKillFeed" })
+        DebugLog("Kill feed nettoyé")
     end
+    
+    DebugLog("======================", "success")
 end)
 
+-- ================================================================================================
+-- EVENT : SORTIE MANUELLE (COMMANDE)
+-- ================================================================================================
 RegisterNetEvent('gunfightarena:exit')
 AddEventHandler('gunfightarena:exit', function()
+    DebugLog("=== SORTIE MANUELLE ===")
+    
     if isInArena then
         isInArena = false
-        TriggerEvent('esx:showNotification', "^1Vous avez quitté l'arène.")
+        TriggerEvent('esx:showNotification', Config.Messages.exitArena)
     else
-        TriggerEvent('esx:showNotification', "Vous n'êtes pas dans l'arène.")
+        TriggerEvent('esx:showNotification', Config.Messages.notInArena)
     end
+    
+    -- Nettoyage
     if arenaBlip then
         RemoveBlip(arenaBlip)
         arenaBlip = nil
@@ -200,108 +353,129 @@ AddEventHandler('gunfightarena:exit', function()
         arenaZone:destroy()
         arenaZone = nil
     end
-    RemoveWeaponFromPed(PlayerPedId(), GetHashKey("weapon_pistol50"))
+    
+    RemoveWeaponFromPed(PlayerPedId(), GetHashKey(Config.WeaponHash))
     SetEntityCoords(PlayerPedId(), Config.LobbySpawn.x, Config.LobbySpawn.y, Config.LobbySpawn.z)
     if Config.LobbySpawnHeading then
         SetEntityHeading(PlayerPedId(), Config.LobbySpawnHeading)
     end
+    
+    DebugLog("======================", "success")
 end)
 
--------------------------------------------------
--- Gestion continue de la mort dans l'arène
--------------------------------------------------
+-- ================================================================================================
+-- THREAD : GESTION DE LA MORT DANS L'ARÈNE
+-- ================================================================================================
 Citizen.CreateThread(function()
+    DebugLog("Thread gestion mort démarré")
+    
     while true do
-        Citizen.Wait(0)
+        Citizen.Wait(Config.Threads.deathCheck)
+        
         if isInArena then
             local playerPed = PlayerPedId()
+            
             if IsEntityDead(playerPed) then
-                local randomIndex
+                DebugLog("=== JOUEUR MORT ===")
+                
+                local randomIndex = nil
                 if currentZone then
                     local respawnPoints = Config["Zone" .. currentZone].respawnPoints
                     randomIndex = math.random(1, #respawnPoints)
+                    DebugLog("Index de respawn sélectionné: " .. randomIndex)
                 end
 
                 if randomIndex then
+                    -- Détection du killer
                     local killerPed = GetPedSourceOfDeath(playerPed)
-                    local killerServerId
+                    local killerServerId = nil
+                    
                     if killerPed and killerPed ~= 0 then
                         local killerPlayer = NetworkGetPlayerIndexFromPed(killerPed)
                         if killerPlayer and killerPlayer ~= -1 then
                             killerServerId = GetPlayerServerId(killerPlayer)
+                            DebugLog("Killer trouvé: " .. killerServerId)
                         end
+                    else
+                        DebugLog("Pas de killer détecté (suicide/environnement)")
                     end
+                    
+                    -- Notification au serveur
                     TriggerServerEvent('gunfightarena:playerDied', randomIndex, killerServerId)
                 end
-                Citizen.Wait(5000)
+                
+                DebugLog("Attente de " .. Config.RespawnDelay .. "ms avant respawn")
+                Citizen.Wait(Config.RespawnDelay)
+                DebugLog("===================")
             end
         end
     end
 end)
 
--------------------------------------------------
--- Invincibilité temporaire lors du spawn si déjà dans l'arène
--------------------------------------------------
+-- ================================================================================================
+-- EVENT : SPAWN DU JOUEUR (INVINCIBILITÉ TEMPORAIRE)
+-- ================================================================================================
 AddEventHandler('playerSpawned', function(spawn)
     if isInArena then
+        DebugLog("=== PLAYER SPAWNED ===")
         SetEntityInvincible(PlayerPedId(), true)
+        DebugLog("Invincibilité activée au spawn")
+        
         Citizen.SetTimeout(Config.InvincibilityTime, function()
             SetEntityInvincible(PlayerPedId(), false)
+            DebugLog("Invincibilité désactivée", "success")
         end)
+        DebugLog("======================")
     end
 end)
 
--------------------------------------------------
--- Affichage du marqueur de l'arène
--------------------------------------------------
+-- ================================================================================================
+-- THREAD : AFFICHAGE DU MARQUEUR DE ZONE
+-- ================================================================================================
 Citizen.CreateThread(function()
+    DebugLog("Thread marqueur zone démarré")
+    
     while true do
-        Citizen.Wait(0)
-        if isInArena then
-            DrawMarker(
-                1,
-                (currentZone == 1 and Config.Zone1.spawn.pos.x or 
-                 (currentZone == 2 and Config.Zone2.spawn.pos.x or 
-                  (currentZone == 3 and Config.Zone3.spawn.pos.x or 
-                   (currentZone == 4 and Config.Zone4.spawn.pos.x or 0)))),
-                (currentZone == 1 and Config.Zone1.spawn.pos.y or 
-                 (currentZone == 2 and Config.Zone2.spawn.pos.y or 
-                  (currentZone == 3 and Config.Zone3.spawn.pos.y or 
-                   (currentZone == 4 and Config.Zone4.spawn.pos.y or 0)))),
-                (currentZone == 1 and Config.Zone1.spawn.pos.z or 
-                 (currentZone == 2 and Config.Zone2.spawn.pos.z or 
-                  (currentZone == 3 and Config.Zone3.spawn.pos.z or 
-                   (currentZone == 4 and Config.Zone4.spawn.pos.z or 0)))),
-                0, 0, 0,
-                0, 0, 0,
-                (currentZone == 1 and Config.Zone1.radius or 
-                 (currentZone == 2 and Config.Zone2.radius or 
-                  (currentZone == 3 and Config.Zone3.radius or 
-                   (currentZone == 4 and Config.Zone4.radius or 0)))) * 2,
-                (currentZone == 1 and Config.Zone1.radius or 
-                 (currentZone == 2 and Config.Zone2.radius or 
-                  (currentZone == 3 and Config.Zone3.radius or 
-                   (currentZone == 4 and Config.Zone4.radius or 0)))) * 2,
-                100.0,
-                255, 0, 0,
-                50,
-                false, true, 2, false, nil, nil, false
-            )
+        Citizen.Wait(Config.Threads.zoneMarker)
+        
+        if isInArena and currentZone then
+            local zoneCfg = Config["Zone" .. currentZone]
+            if zoneCfg then
+                DrawMarker(
+                    1,  -- Cylindre
+                    zoneCfg.spawn.pos.x, zoneCfg.spawn.pos.y, zoneCfg.spawn.pos.z,
+                    0, 0, 0,
+                    0, 0, 0,
+                    zoneCfg.radius * 2, zoneCfg.radius * 2, 100.0,
+                    zoneCfg.markerColor.r, zoneCfg.markerColor.g, 
+                    zoneCfg.markerColor.b, zoneCfg.markerColor.a,
+                    false, true, 2, false, nil, nil, false
+                )
+            end
         end
     end
 end)
 
--------------------------------------------------
--- Affichage du Kill Feed en zone d'arène
--------------------------------------------------
+-- ================================================================================================
+-- EVENT : RÉCEPTION DU KILL FEED
+-- ================================================================================================
 RegisterNetEvent('gunfightarena:killFeed')
 AddEventHandler('gunfightarena:killFeed', function(killerName, victimName, headshot, multiplier, killerId)
     if isInArena then
+        DebugLog("=== KILL FEED ===", "ui")
+        DebugLog("Killer: " .. killerName, "ui")
+        DebugLog("Victime: " .. victimName, "ui")
+        DebugLog("Headshot: " .. tostring(headshot), "ui")
+        DebugLog("Multiplier: " .. multiplier, "ui")
+        
+        -- Si c'est le joueur local qui a tué, restaurer sa vie
         if GetPlayerServerId(PlayerId()) == killerId then
             local playerPed = PlayerPedId()
             SetEntityHealth(playerPed, GetEntityMaxHealth(playerPed))
+            DebugLog("Vie restaurée pour le killer", "success")
         end
 
+        -- Envoi à l'interface NUI
         SendNUIMessage({
             action = "killFeed",
             message = {
@@ -311,13 +485,16 @@ AddEventHandler('gunfightarena:killFeed', function(killerName, victimName, heads
                 multiplier = multiplier
             }
         })
+        DebugLog("Message envoyé à l'UI", "success")
+        DebugLog("=================")
     end
 end)
 
--------------------------------------------------
--- Commande de test du kill feed
--------------------------------------------------
-RegisterCommand("testkillfeed", function(source, args, rawCommand)
+-- ================================================================================================
+-- COMMANDE : TEST DU KILL FEED
+-- ================================================================================================
+RegisterCommand(Config.TestKillFeedCommand, function(source, args, rawCommand)
+    DebugLog("=== TEST KILL FEED ===", "ui")
     local fakeMessage = {
         killer = "TestKiller" .. math.random(1, 10),
         victim = "TestVictim" .. math.random(1, 10),
@@ -328,76 +505,194 @@ RegisterCommand("testkillfeed", function(source, args, rawCommand)
         action = "killFeed",
         message = fakeMessage
     })
-    TriggerEvent('chat:addMessage', { args = { "^2TestKillFeed :", "Message envoyé !" } })
+    DebugLog("Message de test envoyé", "success")
+    DebugLog("======================")
 end, false)
 
--------------------------------------------------
--- Maintien de la stamina maximale dans l'arène
--------------------------------------------------
-Citizen.CreateThread(function()
-    while true do
-        Citizen.Wait(0)
-        if isInArena then
-            ResetPlayerStamina(PlayerId())
+-- ================================================================================================
+-- THREAD : STAMINA INFINIE DANS L'ARÈNE
+-- ================================================================================================
+if Config.InfiniteStamina then
+    Citizen.CreateThread(function()
+        DebugLog("Thread stamina infinie démarré")
+        
+        while true do
+            Citizen.Wait(Config.Threads.staminaReset)
+            
+            if isInArena then
+                ResetPlayerStamina(PlayerId())
+            end
         end
-    end
-end)
+    end)
+end
 
--------------------------------------------------
--- Ouverture du leaderboard via une touche (touche 183) en arène
--------------------------------------------------
+-- ================================================================================================
+-- THREAD : OUVERTURE DU LEADERBOARD
+-- ================================================================================================
 Citizen.CreateThread(function()
+    DebugLog("Thread leaderboard démarré")
+    
     while true do
         Citizen.Wait(0)
-        if isInArena and IsControlJustPressed(0, 183) then
+        
+        if isInArena and IsControlJustPressed(0, Config.LeaderboardKey) then
+            DebugLog("=== OUVERTURE LEADERBOARD ===", "ui")
             TriggerServerEvent('gunfightarena:getStats')
+            DebugLog("Requête statistiques envoyée", "ui")
+            DebugLog("=============================")
         end
     end
 end)
 
--------------------------------------------------
--- Réception et affichage du leaderboard
--------------------------------------------------
+-- ================================================================================================
+-- EVENT : RÉCEPTION DES STATISTIQUES
+-- ================================================================================================
 RegisterNetEvent('gunfightarena:statsData')
 AddEventHandler('gunfightarena:statsData', function(leaderboard)
+    DebugLog("=== RÉCEPTION STATS ===", "ui")
+    DebugLog("Nombre d'entrées: " .. #leaderboard, "ui")
     SendNUIMessage({ action = "showStats", stats = leaderboard })
     SetNuiFocus(true, true)
+    DebugLog("Leaderboard affiché", "success")
+    DebugLog("=======================")
 end)
 
--------------------------------------------------
--- Réception des mises à jour des joueurs par zone
--------------------------------------------------
+-- ================================================================================================
+-- EVENT : RÉCEPTION DES STATS PERSONNELLES
+-- ================================================================================================
+RegisterNetEvent('gunfightarena:personalStatsData')
+AddEventHandler('gunfightarena:personalStatsData', function(personalStats)
+    DebugLog("=== RÉCEPTION STATS PERSONNELLES ===", "ui")
+    DebugLog("Joueur: " .. personalStats.player, "ui")
+    DebugLog("Kills: " .. personalStats.kills .. " | Deaths: " .. personalStats.deaths, "ui")
+    DebugLog("K/D: " .. personalStats.kd, "ui")
+    SendNUIMessage({ action = "showPersonalStats", stats = personalStats })
+    SetNuiFocus(true, true)
+    DebugLog("Stats personnelles affichées", "success")
+    DebugLog("====================================")
+end)
+
+-- ================================================================================================
+-- EVENT : RÉCEPTION DU CLASSEMENT GLOBAL
+-- ================================================================================================
+RegisterNetEvent('gunfightarena:globalLeaderboardData')
+AddEventHandler('gunfightarena:globalLeaderboardData', function(leaderboard)
+    DebugLog("=== RÉCEPTION CLASSEMENT GLOBAL ===", "ui")
+    DebugLog("Nombre d'entrées: " .. #leaderboard, "ui")
+    SendNUIMessage({ action = "showGlobalLeaderboard", stats = leaderboard })
+    SetNuiFocus(true, true)
+    DebugLog("Classement global affiché", "success")
+    DebugLog("===================================")
+end)
+
+-- ================================================================================================
+-- EVENT : MISE À JOUR DES JOUEURS PAR ZONE
+-- ================================================================================================
 RegisterNetEvent('gunfightarena:updateZonePlayers')
 AddEventHandler('gunfightarena:updateZonePlayers', function(zones)
+    if Config.DebugClient then
+        DebugLog("=== UPDATE ZONES ===", "ui")
+        for _, zone in ipairs(zones) do
+            DebugLog("Zone " .. zone.zone .. ": " .. zone.players .. "/" .. zone.maxPlayers, "ui")
+        end
+        DebugLog("====================")
+    end
+    
     SendNUIMessage({
         action = "updateZonePlayers",
         zones = zones
     })
 end)
 
--------------------------------------------------
--- Auto-join : Intégration automatique dans l'arène selon la position
--------------------------------------------------
-Citizen.CreateThread(function()
-    while true do
-        Citizen.Wait(500)
-        if not isInArena then
-            local playerPed = PlayerPedId()
-            local playerPos = GetEntityCoords(playerPed)
-            local zoneToJoin = nil
-            if #(playerPos - Config.Zone1.spawn.pos) < Config.Zone1.radius then
-                zoneToJoin = 1
-            elseif #(playerPos - Config.Zone2.spawn.pos) < Config.Zone2.radius then
-                zoneToJoin = 2
-            elseif #(playerPos - Config.Zone3.spawn.pos) < Config.Zone3.radius then
-                zoneToJoin = 3
-            elseif #(playerPos - Config.Zone4.spawn.pos) < Config.Zone4.radius then
-                zoneToJoin = 4
-            end
+-- ================================================================================================
+-- THREAD : AUTO-JOIN (SI ACTIVÉ)
+-- ================================================================================================
+if Config.AutoJoin then
+    Citizen.CreateThread(function()
+        DebugLog("Thread auto-join démarré (intervalle: " .. Config.AutoJoinCheckInterval .. "ms)")
+        
+        while true do
+            Citizen.Wait(Config.AutoJoinCheckInterval)
+            
+            if not isInArena then
+                local playerPed = PlayerPedId()
+                local playerPos = GetEntityCoords(playerPed)
+                local zoneToJoin = nil
+                
+                -- Vérifier chaque zone
+                for i = 1, 4 do
+                    local zoneCfg = Config["Zone" .. i]
+                    if zoneCfg and zoneCfg.enabled then
+                        if #(playerPos - zoneCfg.spawn.pos) < zoneCfg.radius then
+                            zoneToJoin = i
+                            DebugLog("Auto-join détecté pour la zone " .. i)
+                            break
+                        end
+                    end
+                end
 
-            if zoneToJoin then
-                TriggerServerEvent('gunfightarena:joinRequest', zoneToJoin)
+                if zoneToJoin then
+                    TriggerServerEvent('gunfightarena:joinRequest', zoneToJoin)
+                end
             end
         end
-    end
+    end)
+end
+
+-- ================================================================================================
+-- INITIALISATION
+-- ================================================================================================
+Citizen.CreateThread(function()
+    Wait(1000)
+    DebugLog("========================================", "success")
+    DebugLog("GUNFIGHT ARENA CLIENT - DÉMARRÉ", "success")
+    DebugLog("Version: 2.0 avec instances", "success")
+    DebugLog("Debug: " .. (Config.DebugClient and "ACTIVÉ" or "DÉSACTIVÉ"), "success")
+    DebugLog("Auto-join: " .. (Config.AutoJoin and "ACTIVÉ" or "DÉSACTIVÉ"), "success")
+    DebugLog("========================================", "success")
+end)
+
+-- ================================================================================================
+-- CALLBACK NUI : DEMANDE DE STATS PERSONNELLES
+-- ================================================================================================
+RegisterNUICallback('getPersonalStats', function(data, cb)
+    DebugLog("=== CALLBACK STATS PERSONNELLES ===", "ui")
+    TriggerServerEvent('gunfightarena:getPersonalStats')
+    DebugLog("Requête envoyée au serveur", "success")
+    DebugLog("===================================")
+    cb('ok')
+end)
+
+-- ================================================================================================
+-- CALLBACK NUI : DEMANDE DU CLASSEMENT GLOBAL
+-- ================================================================================================
+RegisterNUICallback('getGlobalLeaderboard', function(data, cb)
+    DebugLog("=== CALLBACK CLASSEMENT GLOBAL ===", "ui")
+    TriggerServerEvent('gunfightarena:getGlobalLeaderboard')
+    DebugLog("Requête envoyée au serveur", "success")
+    DebugLog("==================================")
+    cb('ok')
+end)
+
+-- ================================================================================================
+-- CALLBACK NUI : DEMANDE DU LOBBY SCOREBOARD
+-- ================================================================================================
+RegisterNUICallback('getLobbyScoreboard', function(data, cb)
+    DebugLog("=== CALLBACK LOBBY SCOREBOARD ===", "ui")
+    TriggerServerEvent('gunfightarena:getLobbyScoreboard')
+    DebugLog("Requête envoyée au serveur", "success")
+    DebugLog("=================================")
+    cb('ok')
+end)
+
+-- ================================================================================================
+-- EVENT : RÉCEPTION DU LOBBY SCOREBOARD
+-- ================================================================================================
+RegisterNetEvent('gunfightarena:lobbyScoreboardData')
+AddEventHandler('gunfightarena:lobbyScoreboardData', function(scoreboard)
+    DebugLog("=== RÉCEPTION LOBBY SCOREBOARD ===", "ui")
+    DebugLog("Nombre d'entrées: " .. #scoreboard, "ui")
+    SendNUIMessage({ action = "showLobbyScoreboard", stats = scoreboard })
+    DebugLog("Lobby scoreboard affiché", "success")
+    DebugLog("==================================")
 end)
