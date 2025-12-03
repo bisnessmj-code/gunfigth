@@ -1,4 +1,9 @@
 // ================================
+// GUNFIGHT ARENA - SCRIPT.JS (VERSION FINALE CORRIGÉE)
+// Fix focus NUI : libération uniquement depuis le jeu, pas depuis le lobby
+// ================================
+
+// ================================
 // GLOBAL VARIABLES
 // ================================
 let currentZoneData = [];
@@ -27,7 +32,6 @@ window.addEventListener('message', (event) => {
             showGlobalLeaderboard(data.stats);
             break;
         case 'showLobbyScoreboard':
-            // Mettre à jour SEULEMENT la sidebar, pas le popup
             displayLobbyLeaderboard(data.stats);
             break;
         case 'killFeed':
@@ -48,7 +52,6 @@ window.addEventListener('message', (event) => {
 // DOM READY - BUTTON LISTENERS
 // ================================
 document.addEventListener('DOMContentLoaded', () => {
-    // Close button for zone selection
     const closeBtn = document.getElementById('close-btn');
     if (closeBtn) {
         closeBtn.addEventListener('click', () => {
@@ -56,7 +59,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Close button for leaderboard
     const statsCloseBtn = document.getElementById('stats-close-btn');
     if (statsCloseBtn) {
         statsCloseBtn.addEventListener('click', () => {
@@ -64,7 +66,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Personal Stats button
     const personalStatsBtn = document.getElementById('personal-stats-btn');
     if (personalStatsBtn) {
         personalStatsBtn.addEventListener('click', () => {
@@ -73,17 +74,14 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // View full leaderboard button
     const viewFullBtn = document.getElementById('view-full-leaderboard');
     if (viewFullBtn) {
         viewFullBtn.addEventListener('click', () => {
-            console.log("Ouverture classement complet depuis sidebar");
-            // Toujours charger le classement complet depuis le serveur
+            console.log("Ouverture classement complet");
             postNUIMessage('getGlobalLeaderboard', {});
         });
     }
 
-    // Close button for personal stats
     const personalStatsCloseBtn = document.getElementById('personal-stats-close-btn');
     if (personalStatsCloseBtn) {
         personalStatsCloseBtn.addEventListener('click', () => {
@@ -91,7 +89,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Close button for global leaderboard
     const globalLeaderboardCloseBtn = document.getElementById('global-leaderboard-close-btn');
     if (globalLeaderboardCloseBtn) {
         globalLeaderboardCloseBtn.addEventListener('click', () => {
@@ -99,7 +96,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // ESC key to close UIs
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
             const arenaUI = document.getElementById('arena-ui');
@@ -109,32 +105,15 @@ document.addEventListener('DOMContentLoaded', () => {
             
             if (arenaUI && arenaUI.style.display === 'flex') {
                 closeUI();
-            }
-            if (statsUI && statsUI.style.display === 'flex') {
+            } else if (statsUI && statsUI.style.display === 'flex') {
                 closeStatsUI();
-            }
-            if (personalStatsUI && personalStatsUI.style.display === 'flex') {
+            } else if (personalStatsUI && personalStatsUI.style.display === 'flex') {
                 closePersonalStatsUI();
-            }
-            if (globalLeaderboardUI && globalLeaderboardUI.style.display === 'flex') {
+            } else if (globalLeaderboardUI && globalLeaderboardUI.style.display === 'flex') {
                 closeGlobalLeaderboardUI();
             }
         }
     });
-
-    // Test mode for kill feed (only in browser testing)
-    if (window.location.search.indexOf("testMode=true") !== -1) {
-        console.log("Test mode activé - Kill feed automatique");
-        setInterval(() => {
-            const fakeMessage = {
-                killer: "TestKiller" + Math.floor(Math.random() * 10),
-                victim: "TestVictim" + Math.floor(Math.random() * 10),
-                headshot: Math.random() > 0.5,
-                multiplier: Math.floor(Math.random() * 5) + 1
-            };
-            addKillFeedMessage(fakeMessage);
-        }, 3000);
-    }
 });
 
 // ================================
@@ -149,10 +128,8 @@ function showUI() {
         return;
     }
 
-    // Clear existing content
     zoneList.innerHTML = "";
 
-    // Build zone cards
     currentZoneData.forEach((zone, index) => {
         const card = document.createElement('div');
         card.className = "zone-card";
@@ -174,7 +151,6 @@ function showUI() {
             </div>
         `;
 
-        // Click event - only if not full
         if (!isFull) {
             card.addEventListener('click', () => {
                 selectZone(zone.zone);
@@ -187,10 +163,7 @@ function showUI() {
         zoneList.appendChild(card);
     });
 
-    // Show UI with animation
     arenaUI.style.display = 'flex';
-    
-    // Charger le classement dans la sidebar du lobby
     console.log("Chargement du classement lobby sidebar...");
     postNUIMessage('getLobbyScoreboard', {});
 }
@@ -201,29 +174,26 @@ function closeUI() {
         arenaUI.style.display = 'none';
     }
     
-    // CRITICAL: Send callback to Lua to release NUI focus
     fetch(`https://${GetParentResourceName()}/closeUI`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json; charset=UTF-8' },
         body: JSON.stringify({})
     }).then(() => {
-        console.log("UI fermée, focus libéré");
+        console.log("✓ Lobby fermé, focus libéré");
     }).catch(err => {
-        console.error("Erreur lors de la fermeture de l'UI:", err);
+        console.error("Erreur lors de la fermeture du lobby:", err);
     });
 }
 
 function selectZone(zoneNumber) {
     console.log("Zone sélectionnée:", zoneNumber);
     
-    // Send zone selection to Lua
     fetch(`https://${GetParentResourceName()}/zoneSelected`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json; charset=UTF-8' },
         body: JSON.stringify({ zone: zoneNumber })
     }).then(() => {
         console.log("Sélection de zone envoyée");
-        // Close UI after selection
         closeUI();
     }).catch(err => {
         console.error("Erreur lors de la sélection de la zone:", err);
@@ -239,7 +209,6 @@ function updateZonePlayers(zones) {
 
     const arenaUI = document.getElementById('arena-ui');
     if (arenaUI && arenaUI.style.display === 'flex') {
-        // Update existing cards if UI is open
         zones.forEach((zone) => {
             const card = document.querySelector(`.zone-card[data-zone="${zone.zone}"]`);
             if (card) {
@@ -259,7 +228,6 @@ function updateZonePlayers(zones) {
                     status.classList.toggle('full', isFull);
                 }
 
-                // Update card interactivity
                 if (isFull) {
                     card.style.opacity = '0.5';
                     card.style.cursor = 'not-allowed';
@@ -275,7 +243,7 @@ function updateZonePlayers(zones) {
 }
 
 // ================================
-// LEADERBOARD UI
+// LEADERBOARD UI (EN JEU - Touche G)
 // ================================
 function showStats(stats) {
     const statsUI = document.getElementById('stats-ui');
@@ -286,18 +254,14 @@ function showStats(stats) {
         return;
     }
 
-    // Clear existing content
     statsList.innerHTML = "";
 
-    // Build stats rows
     stats.forEach((item, index) => {
         const row = document.createElement('div');
         row.className = "stats-row";
         row.style.animationDelay = `${index * 0.05}s`;
 
         const rank = index + 1;
-        
-        // Convertir kd en nombre
         const kdValue = parseFloat(item.kd) || 0;
 
         row.innerHTML = `
@@ -313,7 +277,6 @@ function showStats(stats) {
         statsList.appendChild(row);
     });
 
-    // Show UI with animation
     statsUI.style.display = 'flex';
 }
 
@@ -323,14 +286,20 @@ function closeStatsUI() {
         statsUI.style.display = 'none';
     }
     
-	// Libérer le focus NUI
-    postNUIMessage('closeStatsUI', {});
-    // NE PAS libérer le focus ici - juste fermer la fenêtre des stats
-    console.log("Stats UI fermée");
+    // FIX: Appel du callback pour libérer le focus (EN JEU uniquement)
+    fetch(`https://${GetParentResourceName()}/closeStatsUI`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json; charset=UTF-8' },
+        body: JSON.stringify({})
+    }).then(() => {
+        console.log("✓ Leaderboard fermé (en jeu), focus libéré");
+    }).catch(err => {
+        console.error("Erreur lors de la fermeture du leaderboard:", err);
+    });
 }
 
 // ================================
-// PERSONAL STATS UI
+// PERSONAL STATS UI (DEPUIS LE LOBBY)
 // ================================
 function showPersonalStats(stats) {
     console.log("Affichage des stats personnelles:", stats);
@@ -341,16 +310,13 @@ function showPersonalStats(stats) {
         return;
     }
 
-    // Mettre à jour le nom du joueur
     const playerNameEl = document.getElementById('personal-player-name');
     if (playerNameEl) {
         playerNameEl.textContent = stats.player || "VOTRE PROFIL";
     }
 
-    // Convertir kd en nombre
     const kdValue = parseFloat(stats.kd) || 0;
 
-    // Mettre à jour les cartes de stats
     const elements = {
         'personal-kills': stats.kills || 0,
         'personal-deaths': stats.deaths || 0,
@@ -367,7 +333,6 @@ function showPersonalStats(stats) {
         }
     }
 
-    // Mettre à jour les stats de session
     const sessionKills = document.getElementById('session-kills');
     if (sessionKills) sessionKills.textContent = stats.session_kills || 0;
 
@@ -377,7 +342,6 @@ function showPersonalStats(stats) {
     const currentStreak = document.getElementById('current-streak');
     if (currentStreak) currentStreak.textContent = stats.current_streak || 0;
 
-    // Afficher l'UI
     personalStatsUI.style.display = 'flex';
 }
 
@@ -386,13 +350,21 @@ function closePersonalStatsUI() {
     if (personalStatsUI) {
         personalStatsUI.style.display = 'none';
     }
-    postNUIMessage('closePersonalStatsUI', {});
-    // NE PAS libérer le focus ici - juste fermer la fenêtre des stats
-    console.log("Stats personnelles fermées");
+    
+    // FIX: Appel du callback SANS libérer le focus (on reste dans le lobby)
+    fetch(`https://${GetParentResourceName()}/closePersonalStatsUI`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json; charset=UTF-8' },
+        body: JSON.stringify({})
+    }).then(() => {
+        console.log("✓ Stats personnelles fermées, focus reste actif (lobby)");
+    }).catch(err => {
+        console.error("Erreur lors de la fermeture des stats personnelles:", err);
+    });
 }
 
 // ================================
-// GLOBAL LEADERBOARD UI
+// GLOBAL LEADERBOARD UI (DEPUIS LE LOBBY)
 // ================================
 function showGlobalLeaderboard(stats) {
     console.log("Affichage du classement global:", stats);
@@ -405,16 +377,13 @@ function showGlobalLeaderboard(stats) {
         return;
     }
 
-    // Clear existing content
     leaderboardList.innerHTML = "";
 
-    // Build leaderboard rows
     stats.forEach((item) => {
         const row = document.createElement('div');
         row.className = "stats-row";
         row.style.animationDelay = `${item.rank * 0.05}s`;
 
-        // Convertir kd en nombre
         const kdValue = parseFloat(item.kd) || 0;
 
         row.innerHTML = `
@@ -432,7 +401,6 @@ function showGlobalLeaderboard(stats) {
         leaderboardList.appendChild(row);
     });
 
-    // Show UI with animation
     globalLeaderboardUI.style.display = 'flex';
 }
 
@@ -441,9 +409,17 @@ function closeGlobalLeaderboardUI() {
     if (globalLeaderboardUI) {
         globalLeaderboardUI.style.display = 'none';
     }
-    postNUIMessage('closeGlobalLeaderboardUI', {});
-    // NE PAS libérer le focus ici - juste fermer la fenêtre du classement
-    console.log("Classement global fermé");
+    
+    // FIX: Appel du callback SANS libérer le focus (on reste dans le lobby)
+    fetch(`https://${GetParentResourceName()}/closeGlobalLeaderboardUI`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json; charset=UTF-8' },
+        body: JSON.stringify({})
+    }).then(() => {
+        console.log("✓ Classement global fermé, focus reste actif (lobby)");
+    }).catch(err => {
+        console.error("Erreur lors de la fermeture du classement global:", err);
+    });
 }
 
 // ================================
@@ -454,13 +430,9 @@ function displayLobbyLeaderboard(stats) {
     const lobbyList = document.getElementById('lobby-leaderboard-list');
     if (!lobbyList) return;
 
-    // Sauvegarder en cache
     lobbyLeaderboardCache = stats;
-
-    // Clear
     lobbyList.innerHTML = '';
 
-    // Top 10 seulement
     const top10 = stats.slice(0, 10);
 
     if (top10.length === 0) {
@@ -480,7 +452,6 @@ function displayLobbyLeaderboard(stats) {
         entry.className = 'lobby-leaderboard-entry';
         entry.style.animationDelay = `${player.rank * 0.05}s`;
 
-        // Convertir kd en nombre
         const kdValue = parseFloat(player.kd) || 0;
 
         entry.innerHTML = `
@@ -520,7 +491,6 @@ function addKillFeedMessage(message) {
     const messageDiv = document.createElement('div');
     messageDiv.className = 'killfeed-message';
 
-    // Build message content
     let iconHTML = '';
     if (message.headshot) {
         iconHTML = `<div class="kill-icon headshot">💀</div>`;
@@ -545,7 +515,6 @@ function addKillFeedMessage(message) {
 
     killfeedUI.appendChild(messageDiv);
 
-    // Auto-remove after 5 seconds
     setTimeout(() => {
         if (messageDiv.parentNode) {
             messageDiv.remove();
@@ -585,7 +554,7 @@ function postNUIMessage(action, data = {}) {
 
 function GetParentResourceName() {
     if (window.location.hostname === 'localhost' || window.location.hostname === '' || window.location.hostname === '127.0.0.1') {
-        return 'gunfight_arena'; // Fallback for testing
+        return 'gunfight_arena';
     }
     
     const pathArray = window.location.pathname.split('/');
@@ -597,28 +566,9 @@ function GetParentResourceName() {
     return 'gunfight_arena';
 }
 
-// ESC key to close UIs
-document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') {
-        const arenaUI = document.getElementById('arena-ui');
-        const statsUI = document.getElementById('stats-ui');
-        const personalStatsUI = document.getElementById('personal-stats-ui');
-        const globalLeaderboardUI = document.getElementById('global-leaderboard-ui');
-        
-        if (arenaUI && arenaUI.style.display === 'flex') {
-            closeUI();
-        } else if (statsUI && statsUI.style.display === 'flex') {
-            closeStatsUI();
-        } else if (personalStatsUI && personalStatsUI.style.display === 'flex') {
-            closePersonalStatsUI();
-        } else if (globalLeaderboardUI && globalLeaderboardUI.style.display === 'flex') {
-            closeGlobalLeaderboardUI();
-        }
-    }
-});
 // ================================
 // CONSOLE INFO
 // ================================
-console.log('%c🎮 Gunfight Arena UI Loaded', 'color: #00fff7; font-size: 16px; font-weight: bold;');
-console.log('%cDeveloped with ❤️ for FiveM', 'color: #8892b0; font-size: 12px;');
+console.log('%c🎮 Gunfight Arena UI Loaded (FIX FINAL)', 'color: #00fff7; font-size: 16px; font-weight: bold;');
+console.log('%c✓ Fix focus NUI : lobby et jeu corrigés', 'color: #00ff88; font-size: 12px;');
 console.log('Resource Name:', GetParentResourceName());

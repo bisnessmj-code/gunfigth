@@ -1,7 +1,8 @@
 -- ================================================================================================
--- GUNFIGHT ARENA - CLIENT
+-- GUNFIGHT ARENA - CLIENT (CORRIGÉ)
 -- ================================================================================================
 -- Gestion côté client : UI, zones, respawn, stamina, marqueurs
+-- FIX: Ajout des callbacks NUI pour libérer le focus correctement
 -- ================================================================================================
 
 -- Vérification de CircleZone (dépendance PolyZone)
@@ -556,7 +557,7 @@ AddEventHandler('gunfightarena:statsData', function(leaderboard)
     DebugLog("Nombre d'entrées: " .. #leaderboard, "ui")
     SendNUIMessage({ action = "showStats", stats = leaderboard })
     SetNuiFocus(true, true)
-    DebugLog("Leaderboard affiché", "success")
+    DebugLog("Leaderboard affiché, focus activé", "success")
     DebugLog("=======================")
 end)
 
@@ -571,7 +572,7 @@ AddEventHandler('gunfightarena:personalStatsData', function(personalStats)
     DebugLog("K/D: " .. personalStats.kd, "ui")
     SendNUIMessage({ action = "showPersonalStats", stats = personalStats })
     SetNuiFocus(true, true)
-    DebugLog("Stats personnelles affichées", "success")
+    DebugLog("Stats personnelles affichées, focus activé", "success")
     DebugLog("====================================")
 end)
 
@@ -584,7 +585,7 @@ AddEventHandler('gunfightarena:globalLeaderboardData', function(leaderboard)
     DebugLog("Nombre d'entrées: " .. #leaderboard, "ui")
     SendNUIMessage({ action = "showGlobalLeaderboard", stats = leaderboard })
     SetNuiFocus(true, true)
-    DebugLog("Classement global affiché", "success")
+    DebugLog("Classement global affiché, focus activé", "success")
     DebugLog("===================================")
 end)
 
@@ -643,19 +644,6 @@ if Config.AutoJoin then
 end
 
 -- ================================================================================================
--- INITIALISATION
--- ================================================================================================
-Citizen.CreateThread(function()
-    Wait(1000)
-    DebugLog("========================================", "success")
-    DebugLog("GUNFIGHT ARENA CLIENT - DÉMARRÉ", "success")
-    DebugLog("Version: 2.0 avec instances", "success")
-    DebugLog("Debug: " .. (Config.DebugClient and "ACTIVÉ" or "DÉSACTIVÉ"), "success")
-    DebugLog("Auto-join: " .. (Config.AutoJoin and "ACTIVÉ" or "DÉSACTIVÉ"), "success")
-    DebugLog("========================================", "success")
-end)
-
--- ================================================================================================
 -- CALLBACK NUI : DEMANDE DE STATS PERSONNELLES
 -- ================================================================================================
 RegisterNUICallback('getPersonalStats', function(data, cb)
@@ -685,6 +673,42 @@ RegisterNUICallback('getLobbyScoreboard', function(data, cb)
     TriggerServerEvent('gunfightarena:getLobbyScoreboard')
     DebugLog("Requête envoyée au serveur", "success")
     DebugLog("=================================")
+    cb('ok')
+end)
+
+-- ================================================================================================
+-- CALLBACK NUI : FERMETURE DU LEADERBOARD (EN JEU - Touche G)
+-- ================================================================================================
+RegisterNUICallback('closeStatsUI', function(data, cb)
+    DebugLog("=== FERMETURE LEADERBOARD ===", "ui")
+    -- Libérer le focus NUI car on est EN JEU (pas dans le lobby)
+    SetNuiFocus(false, false)
+    DebugLog("Focus NUI libéré (retour au jeu)", "success")
+    DebugLog("=============================")
+    cb('ok')
+end)
+
+-- ================================================================================================
+-- CALLBACK NUI : FERMETURE DES STATS PERSONNELLES (DEPUIS LE LOBBY)
+-- ================================================================================================
+RegisterNUICallback('closePersonalStatsUI', function(data, cb)
+    DebugLog("=== FERMETURE STATS PERSONNELLES ===", "ui")
+    -- NE PAS libérer le focus car on est dans le LOBBY
+    -- Le focus reste actif pour pouvoir continuer à interagir avec le lobby
+    DebugLog("Fenêtre fermée, focus reste actif (lobby)", "success")
+    DebugLog("====================================")
+    cb('ok')
+end)
+
+-- ================================================================================================
+-- CALLBACK NUI : FERMETURE DU CLASSEMENT GLOBAL (DEPUIS LE LOBBY)
+-- ================================================================================================
+RegisterNUICallback('closeGlobalLeaderboardUI', function(data, cb)
+    DebugLog("=== FERMETURE CLASSEMENT GLOBAL ===", "ui")
+    -- NE PAS libérer le focus car on est dans le LOBBY
+    -- Le focus reste actif pour pouvoir continuer à interagir avec le lobby
+    DebugLog("Fenêtre fermée, focus reste actif (lobby)", "success")
+    DebugLog("===================================")
     cb('ok')
 end)
 
@@ -746,4 +770,17 @@ Citizen.CreateThread(function()
             lastPosition = nil
         end
     end
+end)
+
+-- ================================================================================================
+-- INITIALISATION
+-- ================================================================================================
+Citizen.CreateThread(function()
+    Wait(1000)
+    DebugLog("========================================", "success")
+    DebugLog("GUNFIGHT ARENA CLIENT - DÉMARRÉ", "success")
+    DebugLog("Version: 2.0 - FIX FOCUS NUI", "success")
+    DebugLog("Debug: " .. (Config.DebugClient and "ACTIVÉ" or "DÉSACTIVÉ"), "success")
+    DebugLog("Auto-join: " .. (Config.AutoJoin and "ACTIVÉ" or "DÉSACTIVÉ"), "success")
+    DebugLog("========================================", "success")
 end)

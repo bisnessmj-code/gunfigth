@@ -11,11 +11,11 @@ Config = {}
 -- DEBUG & LOGS
 -- ================================================================================================
 -- Active les logs de debug dans la console F8 (côté client) et console serveur
-Config.Debug = true                     -- Active/désactive tous les logs de debug
-Config.DebugClient = true               -- Logs côté client (F8)
-Config.DebugServer = true               -- Logs côté serveur (console)
-Config.DebugNUI = true                  -- Logs JavaScript (F8)
-Config.DebugInstance = true             -- Logs spécifiques aux instances/buckets
+Config.Debug = false                     -- Active/désactive tous les logs de debug
+Config.DebugClient = false               -- Logs côté client (F8)
+Config.DebugServer = false               -- Logs côté serveur (console)
+Config.DebugNUI = false                  -- Logs JavaScript (F8)
+Config.DebugInstance = false             -- Logs spécifiques aux instances/buckets
 
 -- ================================================================================================
 -- SYSTÈME D'INSTANCES (ROUTING BUCKETS)
@@ -38,7 +38,7 @@ Config.ZoneBuckets = {
 -- POINT D'INTERACTION (LOBBY)
 -- ================================================================================================
 -- Point où le joueur peut ouvrir le menu de sélection de zone
-Config.InteractionPoint = vector4(-2614.140625, -749.525268, 3.600708, 269.291352)
+Config.InteractionPoint = vector4(-419.907684, 1129.648316, 325.904052, 73.70079)
 
 -- Touche pour interagir (38 = E)
 -- Liste des touches: https://docs.fivem.net/docs/game-references/controls/
@@ -54,7 +54,7 @@ Config.LobbyInteractDistance = 2.0
 -- SPAWN DU LOBBY
 -- ================================================================================================
 -- Position où le joueur est téléporté quand il quitte l'arène
-Config.LobbySpawn = vector3(-2614.140625, -749.525268, 3.600708)
+Config.LobbySpawn = vector3(-425.525268, 1123.463746, 325.853516)
 Config.LobbySpawnHeading = 158.740158
 
 -- ================================================================================================
