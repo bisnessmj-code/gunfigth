@@ -420,7 +420,7 @@ AddEventHandler('gunfightarena:joinRequest', function(zoneNumber)
     -- Mise à jour des zones
     updateZonePlayers()
     
-    -- Téléporter le joueur
+    -- Téléporter le joueur (avec spawn aléatoire)
     TriggerClientEvent('gunfightarena:join', src, zoneNumber)
     TriggerClientEvent('esx:showNotification', src, Config.Messages.enterArena)
     
@@ -463,7 +463,7 @@ AddEventHandler('gunfightarena:playerDied', function(respawnIndex, killerId)
     -- Notifier la victime
     TriggerClientEvent('esx:showNotification', src, Config.Messages.playerDied)
     
-    -- Respawn de la victime
+    -- Respawn de la victime (spawn aléatoire avec identifier = 0)
     TriggerClientEvent('gunfightarena:join', src, 0)  -- 0 = respawn aléatoire
     
     -- Traitement du killer
@@ -792,7 +792,7 @@ Citizen.CreateThread(function()
     Wait(1000)
     DebugLog("========================================", "success")
     DebugLog("GUNFIGHT ARENA SERVER - DÉMARRÉ", "success")
-    DebugLog("Version: 2.0 avec instances", "success")
+    DebugLog("Version: 3.0 avec PED et spawn aléatoire", "success")
     DebugLog("Debug: " .. (Config.DebugServer and "ACTIVÉ" or "DÉSACTIVÉ"), "success")
     DebugLog("Instances: " .. (Config.UseInstances and "ACTIVÉES" or "DÉSACTIVÉES"), "success")
     DebugLog("Base de données: " .. (Config.SaveStatsToDatabase and "ACTIVÉE" or "DÉSACTIVÉE"), "success")

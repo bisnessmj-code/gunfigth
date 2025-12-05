@@ -4,8 +4,9 @@ game 'gta5'
 -- Importation recommandée pour ESX
 shared_script '@es_extended/imports.lua'
 
-description 'Gestion d\'Arène Gunfight - Script ESX'
-version '1.0.0'
+description 'Gestion d\'Arène Gunfight - Version PED + Spawn Aléatoire'
+author 'kichta'
+version '3.0.0'
 
 shared_script 'config.lua'
 
@@ -16,7 +17,7 @@ client_scripts {
     '@PolyZone/CircleZone.lua',
     '@PolyZone/ComboZone.lua',
     'client.lua',
-    'custom_revive.lua'  -- Nouveau fichier pour gérer la réanimation
+    'custom_revive.lua'
 }
 
 server_scripts {
@@ -33,7 +34,7 @@ files {
     'html/images/zone1.png',
     'html/images/zone2.png',
     'html/images/zone3.png',
-	'html/images/zone4.png',
+    'html/images/zone4.png',
     'html/images/default.png'
 }
 

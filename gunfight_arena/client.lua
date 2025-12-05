@@ -1,8 +1,7 @@
 -- ================================================================================================
--- GUNFIGHT ARENA - CLIENT (CORRIGÉ)
+-- GUNFIGHT ARENA - CLIENT (VERSION PED + SPAWN ALÉATOIRE)
 -- ================================================================================================
--- Gestion côté client : UI, zones, respawn, stamina, marqueurs
--- FIX: Ajout des callbacks NUI pour libérer le focus correctement
+-- Gestion côté client : UI, zones, respawn, stamina, PED d'interaction
 -- ================================================================================================
 
 -- Vérification de CircleZone (dépendance PolyZone)
@@ -21,9 +20,7 @@ local arenaZone = nil                   -- Zone PolyZone de l'arène
 local justExited = false                -- Empêche la réouverture immédiate du menu
 local currentZone = nil                 -- Zone actuelle du joueur (1, 2, 3 ou 4)
 local currentBucket = Config.LobbyBucket -- Bucket actuel du joueur
-
--- Point du lobby (interaction)
-local lobbyPoint = vector3(Config.InteractionPoint.x, Config.InteractionPoint.y, Config.InteractionPoint.z)
+local lobbyPed = nil                    -- PED du lobby
 
 -- ================================================================================================
 -- FONCTION : LOG DEBUG CLIENT
@@ -40,6 +37,8 @@ local function DebugLog(message, type)
         prefix = "^4[GF-UI]^0"
     elseif type == "instance" then
         prefix = "^5[GF-Instance]^0"
+    elseif type == "ped" then
+        prefix = "^3[GF-PED]^0"
     end
     
     print(prefix .. " " .. message)
@@ -68,7 +67,7 @@ end
 if Config.LobbyBlip.enabled then
     Citizen.CreateThread(function()
         DebugLog("=== CRÉATION BLIP LOBBY ===")
-        local blip = AddBlipForCoord(lobbyPoint.x, lobbyPoint.y, lobbyPoint.z)
+        local blip = AddBlipForCoord(Config.LobbyPed.pos.x, Config.LobbyPed.pos.y, Config.LobbyPed.pos.z)
         SetBlipSprite(blip, Config.LobbyBlip.sprite)
         SetBlipDisplay(blip, 4)
         SetBlipScale(blip, Config.LobbyBlip.scale)
@@ -77,74 +76,128 @@ if Config.LobbyBlip.enabled then
         BeginTextCommandSetBlipName("STRING")
         AddTextComponentSubstringPlayerName(Config.LobbyBlip.name)
         EndTextCommandSetBlipName(blip)
-        DebugLog("Blip créé aux coordonnées: " .. lobbyPoint, "success")
+        DebugLog("Blip créé aux coordonnées: " .. Config.LobbyPed.pos, "success")
         DebugLog("===========================")
     end)
 end
 
 -- ================================================================================================
--- THREAD : AFFICHAGE DU MARQUEUR ET INVITE AU LOBBY
+-- CRÉATION DU PED DU LOBBY
 -- ================================================================================================
 Citizen.CreateThread(function()
-    DebugLog("Thread marqueur lobby démarré")
+    if not Config.LobbyPed.enabled then
+        DebugLog("PED du lobby désactivé dans la config", "ped")
+        return
+    end
+    
+    DebugLog("=== CRÉATION DU PED LOBBY ===", "ped")
+    
+    -- Charger le modèle du PED
+    local modelHash = GetHashKey(Config.LobbyPed.model)
+    RequestModel(modelHash)
+    
+    while not HasModelLoaded(modelHash) do
+        DebugLog("Chargement du modèle " .. Config.LobbyPed.model .. "...", "ped")
+        Citizen.Wait(100)
+    end
+    
+    DebugLog("Modèle chargé", "success")
+    
+    -- Créer le PED
+    lobbyPed = CreatePed(4, modelHash, Config.LobbyPed.pos.x, Config.LobbyPed.pos.y, Config.LobbyPed.pos.z, Config.LobbyPed.heading, false, true)
+    
+    -- Configuration du PED
+    SetEntityAlpha(lobbyPed, 255, false)
+    SetEntityAsMissionEntity(lobbyPed, true, true)
+    SetPedFleeAttributes(lobbyPed, 0, 0)
+    SetPedDiesWhenInjured(lobbyPed, false)
+    SetPedKeepTask(lobbyPed, true)
+    SetBlockingOfNonTemporaryEvents(lobbyPed, Config.LobbyPed.blockevents)
+    
+    if Config.LobbyPed.frozen then
+        FreezeEntityPosition(lobbyPed, true)
+        DebugLog("PED gelé en place", "ped")
+    end
+    
+    if Config.LobbyPed.invincible then
+        SetEntityInvincible(lobbyPed, true)
+        DebugLog("PED rendu invincible", "ped")
+    end
+    
+    -- Animation du PED
+    if Config.LobbyPed.scenario and Config.LobbyPed.scenario ~= "" then
+        TaskStartScenarioInPlace(lobbyPed, Config.LobbyPed.scenario, 0, true)
+        DebugLog("Animation appliquée: " .. Config.LobbyPed.scenario, "ped")
+    end
+    
+    -- Libérer le modèle
+    SetModelAsNoLongerNeeded(modelHash)
+    
+    DebugLog("PED du lobby créé avec succès!", "success")
+    DebugLog("Position: " .. Config.LobbyPed.pos, "ped")
+    DebugLog("Heading: " .. Config.LobbyPed.heading, "ped")
+    DebugLog("=============================", "ped")
+end)
+
+-- ================================================================================================
+-- THREAD : INTERACTION AVEC LE PED DU LOBBY
+-- ================================================================================================
+Citizen.CreateThread(function()
+    DebugLog("Thread interaction PED démarré")
     
     while true do
-        Citizen.Wait(Config.Threads.lobbyMarker)
+        Citizen.Wait(Config.Threads.pedInteraction)
+        
+        if not Config.LobbyPed.enabled or not lobbyPed or not DoesEntityExist(lobbyPed) then
+            Citizen.Wait(1000)
+            goto continue
+        end
         
         local playerPed = PlayerPedId()
-        local coords = GetEntityCoords(playerPed)
-        local dist = #(coords - lobbyPoint)
+        local playerCoords = GetEntityCoords(playerPed)
+        local pedCoords = GetEntityCoords(lobbyPed)
+        local dist = #(playerCoords - pedCoords)
         
-        -- Affichage du marqueur si proche
-        if dist < Config.LobbyMarkerDistance then
-            DrawMarker(
-                1,  -- Type de marqueur (cylindre)
-                lobbyPoint.x, lobbyPoint.y, lobbyPoint.z - 1.0,
-                0, 0, 0,  -- Direction
-                0, 0, 0,  -- Rotation
-                Config.LobbyCircle.size, Config.LobbyCircle.size, 1.0,  -- Échelle
-                Config.LobbyCircle.color.r, Config.LobbyCircle.color.g, 
-                Config.LobbyCircle.color.b, Config.LobbyCircle.color.a,
-                false, true, 2, false, nil, nil, false
-            )
+        -- Si le joueur est proche du PED
+        if dist < Config.PedInteractDistance and not justExited and not isInArena then
+            -- Afficher le texte d'interaction
+            Draw3DText(pedCoords.x, pedCoords.y, pedCoords.z + 1.0, "Appuyez sur [E] pour rejoindre l'arène")
             
-            -- Interaction si très proche
-            if dist < Config.LobbyInteractDistance and not justExited then
-                Draw3DText(lobbyPoint.x, lobbyPoint.y, lobbyPoint.z + 1.0, "Appuyez sur [E] pour rejoindre l'arène")
+            -- Interaction
+            if IsControlJustPressed(0, Config.InteractKey) and not showingUI then
+                DebugLog("=== OUVERTURE UI ===", "ui")
+                DebugLog("Joueur a interagi avec le PED", "ui")
                 
-                if IsControlJustPressed(0, Config.InteractKey) and not showingUI then
-                    DebugLog("=== OUVERTURE UI ===", "ui")
-                    DebugLog("Joueur a appuyé sur E", "ui")
-
-                	-- AJOUT : Demander mise à jour des zones au serveur
-                    TriggerServerEvent('gunfightarena:requestZoneUpdate')
-                    
-                    -- Préparation des données des zones
-                    local zoneData = {}
-                    for i = 1, 4 do
-                        local zoneCfg = Config["Zone" .. i]
-                        if zoneCfg and zoneCfg.enabled then
-                            table.insert(zoneData, {
-                                label = "Zone " .. i,
-                                image = zoneCfg.spawn.image,
-                                zone = i
-                            })
-                            DebugLog("Zone " .. i .. " ajoutée à l'UI", "ui")
-                        end
+                -- Demander mise à jour des zones au serveur
+                TriggerServerEvent('gunfightarena:requestZoneUpdate')
+                
+                -- Préparation des données des zones
+                local zoneData = {}
+                for i = 1, 4 do
+                    local zoneCfg = Config["Zone" .. i]
+                    if zoneCfg and zoneCfg.enabled then
+                        table.insert(zoneData, {
+                            label = "Zone " .. i,
+                            image = zoneCfg.image,
+                            zone = i
+                        })
+                        DebugLog("Zone " .. i .. " ajoutée à l'UI", "ui")
                     end
-                    
-                    -- Envoi à l'interface NUI
-                    SetNuiFocus(true, true)
-                    SendNUIMessage({
-                        action = "show",
-                        zones = zoneData
-                    })
-                    showingUI = true
-                    DebugLog("UI ouverte, focus activé", "success")
-                    DebugLog("====================")
                 end
+                
+                -- Envoi à l'interface NUI
+                SetNuiFocus(true, true)
+                SendNUIMessage({
+                    action = "show",
+                    zones = zoneData
+                })
+                showingUI = true
+                DebugLog("UI ouverte, focus activé", "success")
+                DebugLog("====================")
             end
         end
+        
+        ::continue::
     end
 end)
 
@@ -196,9 +249,13 @@ AddEventHandler('gunfightarena:join', function(zoneIdentifier)
     else
         -- Nouveau spawn : mise à jour de la zone actuelle
         currentZone = zoneIdentifier
-        spawnData = Config["Zone" .. zoneIdentifier].spawn
-        DebugLog("Nouveau spawn dans la zone " .. zoneIdentifier)
-        DebugLog("Données de spawn: " .. json.encode(spawnData))
+        
+        -- MODIFICATION : Spawn aléatoire au lieu du spawn fixe
+        local respawnPoints = Config["Zone" .. zoneIdentifier].respawnPoints
+        spawnData = respawnPoints[math.random(1, #respawnPoints)]
+        
+        DebugLog("Nouveau spawn ALÉATOIRE dans la zone " .. zoneIdentifier)
+        DebugLog("Point de spawn sélectionné: " .. json.encode(spawnData))
     end
 
     -- Téléportation et réanimation
@@ -243,7 +300,7 @@ AddEventHandler('gunfightarena:join', function(zoneIdentifier)
     local zoneCfg = Config["Zone" .. currentZone]
     if zoneCfg and not arenaBlip then
         DebugLog("Création du blip de zone...")
-        arenaBlip = AddBlipForRadius(zoneCfg.spawn.pos, zoneCfg.radius)
+        arenaBlip = AddBlipForRadius(zoneCfg.center, zoneCfg.radius)
         SetBlipColour(arenaBlip, 1)
         SetBlipAlpha(arenaBlip, 128)
         DebugLog("Blip de zone créé", "success")
@@ -252,7 +309,7 @@ AddEventHandler('gunfightarena:join', function(zoneIdentifier)
     -- Création de la zone PolyZone
     if zoneCfg and not arenaZone then
         DebugLog("Création de la CircleZone...")
-        arenaZone = CircleZone:Create(zoneCfg.spawn.pos, zoneCfg.radius, {
+        arenaZone = CircleZone:Create(zoneCfg.center, zoneCfg.radius, {
             name = "gunfight_zone" .. currentZone,
             debugPoly = Config.PolyZoneDebug,
             useZ = true
@@ -323,6 +380,9 @@ AddEventHandler('gunfightarena:exitZone', function()
         end
         DebugLog("Téléporté au lobby")
         
+        -- Reset de la zone actuelle
+        currentZone = nil
+        
         Citizen.Wait(1000)
         justExited = false
         
@@ -363,6 +423,9 @@ AddEventHandler('gunfightarena:exit', function()
     if Config.LobbySpawnHeading then
         SetEntityHeading(PlayerPedId(), Config.LobbySpawnHeading)
     end
+    
+    -- Reset de la zone actuelle
+    currentZone = nil
     
     DebugLog("======================", "success")
 end)
@@ -447,14 +510,13 @@ Citizen.CreateThread(function()
             if zoneCfg then
                 DrawMarker(
                     1,  -- Cylindre
-                    zoneCfg.spawn.pos.x, zoneCfg.spawn.pos.y, zoneCfg.spawn.pos.z,
+                    zoneCfg.center.x, zoneCfg.center.y, zoneCfg.center.z,
                     0, 0, 0,
                     0, 0, 0,
                     zoneCfg.radius * 2, zoneCfg.radius * 2, 100.0,
                     zoneCfg.markerColor.r, zoneCfg.markerColor.g, 
                     zoneCfg.markerColor.b, zoneCfg.markerColor.a,
-                    false, true, 2, false, nil, nil, false
-                )
+                    false, true, 2, false, nil, nil, false)
             end
         end
     end
@@ -627,7 +689,7 @@ if Config.AutoJoin then
                 for i = 1, 4 do
                     local zoneCfg = Config["Zone" .. i]
                     if zoneCfg and zoneCfg.enabled then
-                        if #(playerPos - zoneCfg.spawn.pos) < zoneCfg.radius then
+                        if #(playerPos - zoneCfg.center) < zoneCfg.radius then
                             zoneToJoin = i
                             DebugLog("Auto-join détecté pour la zone " .. i)
                             break
@@ -681,7 +743,6 @@ end)
 -- ================================================================================================
 RegisterNUICallback('closeStatsUI', function(data, cb)
     DebugLog("=== FERMETURE LEADERBOARD ===", "ui")
-    -- Libérer le focus NUI car on est EN JEU (pas dans le lobby)
     SetNuiFocus(false, false)
     DebugLog("Focus NUI libéré (retour au jeu)", "success")
     DebugLog("=============================")
@@ -693,8 +754,6 @@ end)
 -- ================================================================================================
 RegisterNUICallback('closePersonalStatsUI', function(data, cb)
     DebugLog("=== FERMETURE STATS PERSONNELLES ===", "ui")
-    -- NE PAS libérer le focus car on est dans le LOBBY
-    -- Le focus reste actif pour pouvoir continuer à interagir avec le lobby
     DebugLog("Fenêtre fermée, focus reste actif (lobby)", "success")
     DebugLog("====================================")
     cb('ok')
@@ -705,8 +764,6 @@ end)
 -- ================================================================================================
 RegisterNUICallback('closeGlobalLeaderboardUI', function(data, cb)
     DebugLog("=== FERMETURE CLASSEMENT GLOBAL ===", "ui")
-    -- NE PAS libérer le focus car on est dans le LOBBY
-    -- Le focus reste actif pour pouvoir continuer à interagir avec le lobby
     DebugLog("Fenêtre fermée, focus reste actif (lobby)", "success")
     DebugLog("===================================")
     cb('ok')
@@ -751,7 +808,7 @@ Citizen.CreateThread(function()
                     -- Vérifier si le joueur est toujours dans la zone
                     local zoneCfg = Config["Zone" .. currentZone]
                     if zoneCfg then
-                        local distFromZone = #(currentPos - zoneCfg.spawn.pos)
+                        local distFromZone = #(currentPos - zoneCfg.center)
                         
                         if distFromZone > zoneCfg.radius then
                             DebugLog("Joueur téléporté hors de la zone, sortie automatique", "error")
@@ -773,14 +830,32 @@ Citizen.CreateThread(function()
 end)
 
 -- ================================================================================================
+-- NETTOYAGE AU DÉCHARGEMENT DE LA RESSOURCE
+-- ================================================================================================
+AddEventHandler('onResourceStop', function(resourceName)
+    if GetCurrentResourceName() ~= resourceName then return end
+    
+    DebugLog("=== ARRÊT DE LA RESSOURCE ===", "error")
+    
+    -- Supprimer le PED du lobby
+    if lobbyPed and DoesEntityExist(lobbyPed) then
+        DeleteEntity(lobbyPed)
+        DebugLog("PED du lobby supprimé", "ped")
+    end
+    
+    DebugLog("=============================", "error")
+end)
+
+-- ================================================================================================
 -- INITIALISATION
 -- ================================================================================================
 Citizen.CreateThread(function()
     Wait(1000)
     DebugLog("========================================", "success")
     DebugLog("GUNFIGHT ARENA CLIENT - DÉMARRÉ", "success")
-    DebugLog("Version: 2.0 - FIX FOCUS NUI", "success")
+    DebugLog("Version: 3.0 - PED + SPAWN ALÉATOIRE", "success")
     DebugLog("Debug: " .. (Config.DebugClient and "ACTIVÉ" or "DÉSACTIVÉ"), "success")
     DebugLog("Auto-join: " .. (Config.AutoJoin and "ACTIVÉ" or "DÉSACTIVÉ"), "success")
+    DebugLog("PED Lobby: " .. (Config.LobbyPed.enabled and "ACTIVÉ" or "DÉSACTIVÉ"), "success")
     DebugLog("========================================", "success")
 end)

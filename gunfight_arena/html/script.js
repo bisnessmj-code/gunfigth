@@ -286,7 +286,6 @@ function closeStatsUI() {
         statsUI.style.display = 'none';
     }
     
-    // FIX: Appel du callback pour libérer le focus (EN JEU uniquement)
     fetch(`https://${GetParentResourceName()}/closeStatsUI`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json; charset=UTF-8' },
@@ -351,7 +350,6 @@ function closePersonalStatsUI() {
         personalStatsUI.style.display = 'none';
     }
     
-    // FIX: Appel du callback SANS libérer le focus (on reste dans le lobby)
     fetch(`https://${GetParentResourceName()}/closePersonalStatsUI`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json; charset=UTF-8' },
@@ -410,7 +408,6 @@ function closeGlobalLeaderboardUI() {
         globalLeaderboardUI.style.display = 'none';
     }
     
-    // FIX: Appel du callback SANS libérer le focus (on reste dans le lobby)
     fetch(`https://${GetParentResourceName()}/closeGlobalLeaderboardUI`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json; charset=UTF-8' },
@@ -569,6 +566,6 @@ function GetParentResourceName() {
 // ================================
 // CONSOLE INFO
 // ================================
-console.log('%c🎮 Gunfight Arena UI Loaded (FIX FINAL)', 'color: #00fff7; font-size: 16px; font-weight: bold;');
-console.log('%c✓ Fix focus NUI : lobby et jeu corrigés', 'color: #00ff88; font-size: 12px;');
+console.log('%c🎮 Gunfight Arena UI Loaded (VERSION 3.0)', 'color: #00fff7; font-size: 16px; font-weight: bold;');
+console.log('%c✓ PED au lobby + Spawn aléatoire', 'color: #00ff88; font-size: 12px;');
 console.log('Resource Name:', GetParentResourceName());

@@ -1,92 +1,160 @@
-Gunfight Arena
-Gunfight Arena est un mini-jeu pour FiveM basé sur ESX qui permet aux joueurs de s'affronter dans des zones dédiées. Le script gère l'entrée dans l'arène, la réanimation (avec invincibilité et effet de transparence post-spawn), l'attribution automatique d'une arme (weapon_pistol50) lors du spawn, le retrait de l'arme en quittant l'arène et une remise en continu de la stamina pour permettre un sprint illimité.
+# Gunfight Arena - Version 3.0
 
-Fonctionnalités
-Interface de sélection de zone :
-Le joueur peut choisir entre deux zones d'arène via une interface NUI.
+## Nouveau dans cette version 3.0 :
 
-Réanimation et protection post-spawn :
-Utilisation de NetworkResurrectLocalPlayer pour réanimer le joueur, avec invincibilité et effet de transparence pendant 2 secondes afin d'éviter le spawn kill.
+### ✅ PED au lobby
+- Un PNJ remplace le marqueur circulaire au point d'interaction
+- Modèle par défaut : vendeur d'armes (`s_m_y_ammucity_01`)
+- Animation : garde debout
+- Configurable dans `config.lua`
 
-Gestion d'arme automatique :
-Le joueur reçoit automatiquement le weapon_pistol50 (avec 100 munitions) dès qu'il entre dans l'arène et le perd lorsqu'il quitte.
+### ✅ Spawn aléatoire
+- Plus de spawn fixe à l'entrée de la zone
+- Les joueurs spawn directement à un point aléatoire parmi les `respawnPoints`
+- Évite les collisions entre joueurs au spawn
 
-Remise en continu de la stamina :
-La stamina est constamment réinitialisée pendant que le joueur est dans l'arène, permettant un sprint permanent.
+### ✅ Gestion des instances
+- Sortie de zone : retire automatiquement de l'instance ✓
+- Commande `/quittergf` : retire de l'instance ✓
+- Déconnexion : nettoyage automatique ✓
 
-Gestion des morts et respawn :
-Si le joueur meurt dans l'arène, le script déclenche un respawn après un délai, lui attribue une récompense en argent et le téléporte à un point de respawn aléatoire selon la zone.
+## Installation
 
-Installation
-Dépendances requises :
+### Prérequis
+- **es_extended** (ESX Framework)
+- **PolyZone** (gestion des zones)
+- **mysql-async** (base de données)
 
-es_extended
-PolyZone (pour la gestion des zones)
-mysql-async (pour la connexion à la base de données)
-Installation du script :
+### Étapes
 
-Placez le dossier gunfight_arena dans le dossier resources de votre serveur FiveM.
-Vérifiez que tous les fichiers suivants se trouvent dans le dossier :
-fxmanifest.lua
-config.lua
-client.lua
-custom_revive.lua
-server.lua
-Le dossier html (contenant index.html, style.css, script.js et les images)
-Configuration :
+1. **Placez le dossier** `gunfight_arena` dans votre répertoire `resources/`
 
-Ouvrez le fichier config.lua et ajustez les paramètres (points d'interaction, spawn du lobby, paramètres des zones, récompense, nombre maximum de joueurs, etc.) selon vos besoins.
-Démarrage :
+2. **Créez la table MySQL** :
+```sql
+CREATE TABLE IF NOT EXISTS `gunfight_stats` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `identifier` varchar(50) NOT NULL,
+  `kills` int(11) NOT NULL DEFAULT 0,
+  `deaths` int(11) NOT NULL DEFAULT 0,
+  `headshots` int(11) NOT NULL DEFAULT 0,
+  `best_streak` int(11) NOT NULL DEFAULT 0,
+  `total_playtime` int(11) NOT NULL DEFAULT 0,
+  `last_played` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `identifier` (`identifier`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+```
 
-Ajoutez la ressource dans votre server.cfg :
-ruby
-Copier
+3. **Ajoutez dans votre `server.cfg`** :
+```cfg
 ensure gunfight_arena
-Utilisation
-Rejoindre l'arène :
-Rendez-vous sur le point d'interaction (défini dans config.lua) où vous verrez un marqueur et un texte invitant à rejoindre l'arène. Appuyez sur la touche E pour ouvrir le menu de sélection de zone.
+```
 
-Sélection de zone :
-Choisissez entre Zone 1 et Zone 2 via l'interface NUI. Le joueur sera téléporté à la position de spawn de la zone choisie et recevra le weapon_pistol50 automatiquement.
+4. **Redémarrez votre serveur**
 
-Respawn et protection :
-En cas de mort dans l'arène, le joueur sera réanimé (avec invincibilité et transparence pendant 2 secondes) et recevra une récompense bancaire définie dans config.lua.
+## Configuration
 
-Stamina infinie :
-Pendant que vous êtes dans l'arène, votre stamina est continuellement réinitialisée, permettant un sprint permanent.
+### PED du lobby
+Dans `config.lua`, section `Config.LobbyPed` :
+```lua
+Config.LobbyPed = {
+    enabled = true,
+    model = "s_m_y_ammucity_01",          -- Modèle du PED
+    pos = vector3(-419.907684, 1129.648316, 324.904052),
+    heading = 73.70079,
+    frozen = true,
+    invincible = true,
+    blockevents = true,
+    scenario = "WORLD_HUMAN_GUARD_STAND"  -- Animation
+}
+```
 
-Quitter l'arène :
-Utilisez la commande /zone pour quitter l'arène ou sortez de la zone définie. Dans ce cas, le script retire automatiquement le weapon_pistol50 et vous téléporte au lobby.
+### Zones
+Chaque zone a maintenant :
+- `center` : position centrale (pour le marqueur et PolyZone)
+- `respawnPoints` : tableau de points de spawn aléatoires
+- `image` : image pour l'UI
 
-Test de simulation de mort :
-Pour tester la réanimation, vous pouvez utiliser la commande /testmort (disponible dans custom_revive.lua) pour simuler la mort de votre personnage.
+**Remarque** : Le champ `spawn` (spawn initial) a été supprimé au profit du spawn aléatoire.
 
-Personnalisation
-Modification des zones :
-Vous pouvez modifier les points de spawn, les zones de respawn et le rayon des arènes directement dans le fichier config.lua.
+### Instances (Routing Buckets)
+```lua
+Config.UseInstances = true  -- Active/désactive les instances
+Config.ZoneBuckets = {
+    [1] = 100,  -- Zone 1 = bucket 100
+    [2] = 200,  -- Zone 2 = bucket 200
+    [3] = 300,  -- Zone 3 = bucket 300
+    [4] = 400   -- Zone 4 = bucket 400
+}
+```
 
-Arme attribuée :
-L'arme par défaut attribuée est weapon_pistol50. Pour utiliser une autre arme, modifiez la clé dans le code du client (GiveWeaponToPed et RemoveWeaponFromPed).
+## Utilisation
 
-Effets visuels post-spawn :
-L'effet de transparence est appliqué en définissant l'alpha du joueur à 128 pendant 2 secondes. Vous pouvez ajuster cette valeur et la durée selon vos préférences.
+### Rejoindre l'arène
+1. Rendez-vous au PED du lobby (marqué sur la carte)
+2. Appuyez sur **E** pour ouvrir le menu
+3. Sélectionnez une zone
+4. Vous serez téléporté à un point aléatoire dans la zone
 
-Invincibilité temporaire :
-Le délai d'invincibilité après le spawn est de 2000 ms. Vous pouvez le modifier dans client.lua ou via le paramètre Config.InvincibilityTime dans config.lua.
+### Quitter l'arène
+- **Méthode 1** : Sortez de la zone (téléportation automatique au lobby)
+- **Méthode 2** : Utilisez la commande `/quittergf`
 
-Dépannage
-PolyZone non chargé :
-Assurez-vous que la ressource PolyZone est démarrée et que les chemins dans le fxmanifest sont corrects.
+### Leaderboard
+- **En jeu** : Appuyez sur **Suppr (pavé numérique)** pour afficher le classement
+- **Au lobby** : Cliquez sur "MES STATS" ou "TOP PLAYERS" dans l'interface
 
-ESX non reconnu :
-Vérifiez que es_extended est installé et que la ligne shared_script '@es_extended/imports.lua' est présente dans le fxmanifest.
+## Fonctionnalités
 
-Aucun spawn ou réapparition :
-Vérifiez que les coordonnées dans config.lua sont correctes et que le joueur se trouve bien dans la zone de l'arène.
+- ✅ **4 zones configurables**
+- ✅ **Spawn aléatoire** pour éviter les collisions
+- ✅ **PED d'interaction** au lobby
+- ✅ **Système d'instances** (routing buckets)
+- ✅ **Kill feed en temps réel**
+- ✅ **Statistiques** (kills, deaths, K/D, streaks, headshots)
+- ✅ **Récompenses** et bonus de kill streak
+- ✅ **Stamina infinie**
+- ✅ **Invincibilité temporaire** au spawn
+- ✅ **Classement global** sauvegardé en base de données
 
-Commandes de test non fonctionnelles :
-Assurez-vous d'utiliser la console F8 pour exécuter les commandes côté client (ex. /testmort).
+## Commandes
 
-Credits
-Auteur : kichta
-Basé sur ESX et PolyZone : Merci aux développeurs d'ESX et PolyZone pour leurs outils et ressources.
+| Commande | Description |
+|----------|-------------|
+| `/quittergf` | Quitter l'arène manuellement |
+| `/testmort` | Tester la mort (dev) |
+| `/testkillfeed` | Tester le kill feed (dev) |
+| `/gfdebug` | Afficher les infos de debug (console) |
+| `/gfkick [playerID]` | Retirer un joueur de l'arène (admin) |
+
+## Debug
+
+Pour activer les logs de debug :
+```lua
+Config.DebugClient = true  -- Logs côté client (F8)
+Config.DebugServer = true  -- Logs côté serveur (console)
+```
+
+## Support
+
+- **Version** : 3.0.0
+- **Auteur** : kichta
+- **Framework** : ESX
+
+## Changelog
+
+### Version 3.0.0 (2025)
+- ✨ Ajout du PED au lobby
+- ✨ Spawn aléatoire dans les zones
+- ✨ Suppression du spawn initial fixe
+- ✅ Vérification de la gestion des instances
+- 📝 Documentation mise à jour
+
+### Version 2.0.0
+- ✨ Système d'instances (routing buckets)
+- ✨ Kill feed
+- ✨ Statistiques en base de données
+- ✨ Classement global
+
+### Version 1.0.0
+- 🎉 Version initiale

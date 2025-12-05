@@ -1,5 +1,5 @@
 -- ================================================================================================
--- GUNFIGHT ARENA - CONFIGURATION COMPLÈTE
+-- GUNFIGHT ARENA - CONFIGURATION COMPLÈTE (VERSION PED + SPAWN ALÉATOIRE)
 -- ================================================================================================
 -- Ce fichier contient TOUTES les configurations modifiables du script
 -- Modifiez les valeurs selon vos besoins sans toucher aux autres fichiers
@@ -35,40 +35,33 @@ Config.ZoneBuckets = {
 }
 
 -- ================================================================================================
--- POINT D'INTERACTION (LOBBY)
+-- CONFIGURATION DU PED DU LOBBY
 -- ================================================================================================
--- Point où le joueur peut ouvrir le menu de sélection de zone
-Config.InteractionPoint = vector4(-419.907684, 1129.648316, 325.904052, 73.70079)
+-- PED qui remplace le marqueur circulaire
+Config.LobbyPed = {
+    enabled = true,                                          -- Active/désactive le PED
+    model = "s_m_y_ammucity_01",                            -- Modèle du PED (vendeur d'armes)
+    pos = vector3(-2658.738526, -769.437378, 5.004760),    -- Position du PED
+    heading = 73.70079,                                      -- Direction du PED
+    frozen = true,                                           -- Le PED ne bouge pas
+    invincible = true,                                       -- Le PED est invincible
+    blockevents = true,                                      -- Le PED n'est pas affecté par les événements
+    scenario = "WORLD_HUMAN_GUARD_STAND"                     -- Animation du PED (garde debout)
+}
+
+-- Distance d'interaction avec le PED
+Config.PedInteractDistance = 2.0
 
 -- Touche pour interagir (38 = E)
 -- Liste des touches: https://docs.fivem.net/docs/game-references/controls/
 Config.InteractKey = 38
 
--- Distance maximale pour voir le marqueur du lobby
-Config.LobbyMarkerDistance = 50.0
-
--- Distance pour pouvoir interagir
-Config.LobbyInteractDistance = 2.0
-
 -- ================================================================================================
 -- SPAWN DU LOBBY
 -- ================================================================================================
 -- Position où le joueur est téléporté quand il quitte l'arène
-Config.LobbySpawn = vector3(-425.525268, 1123.463746, 325.853516)
+Config.LobbySpawn = vector3(-2656.351562, -768.101074, 5.740722)
 Config.LobbySpawnHeading = 158.740158
-
--- ================================================================================================
--- CONFIGURATION DU MARQUEUR DU LOBBY
--- ================================================================================================
-Config.LobbyCircle = {
-    size = 1.5,                         -- Taille du cercle au sol
-    color = { 
-        r = 210,                        -- Rouge (0-255)
-        g = 210,                        -- Vert (0-255)
-        b = 210,                        -- Bleu (0-255)
-        a = 210                         -- Alpha/Transparence (0-255)
-    }
-}
 
 -- ================================================================================================
 -- BLIP DU LOBBY (ICÔNE SUR LA CARTE)
@@ -92,15 +85,14 @@ local resourceName = GetCurrentResourceName()
 Config.Zone1 = {
     enabled = true,                     -- Active/désactive cette zone
     
-    -- Point de spawn initial
-    spawn = { 
-        pos = vector3(178.325272, -1687.437378, 28.850512), 
-        heading = 274.960632,
-        image = ("images/zone1.png"):format(resourceName)  -- Image pour l'UI
-    },
+    -- Image pour l'UI de sélection
+    image = ("images/zone1.png"):format(resourceName),
     
     -- Rayon de la zone (en unités GTA)
     radius = 65.0,
+    
+    -- Position centrale de la zone (pour le marqueur et la zone PolyZone)
+    center = vector3(178.325272, -1687.437378, 28.850512),
     
     -- Nombre maximum de joueurs dans cette zone
     maxPlayers = 15,
@@ -113,7 +105,7 @@ Config.Zone1 = {
         a = 50
     },
     
-    -- Points de respawn aléatoires (le joueur spawn à un de ces points après une mort)
+    -- Points de respawn aléatoires (le joueur spawn à un de ces points)
     respawnPoints = {
         { pos = vector3(178.325272, -1687.437378, 29.650512), heading = 303.307098 },
         { pos = vector3(170.109894, -1725.243896, 29.279908), heading = 110.551186 },
@@ -134,13 +126,9 @@ Config.Zone1 = {
 Config.Zone2 = {
     enabled = true,
     
-    spawn = { 
-        pos = vector3(295.898896, 2857.450440, 42.444702), 
-        heading = 277.795288,
-        image = ("images/zone2.png"):format(resourceName)
-    },
-    
+    image = ("images/zone2.png"):format(resourceName),
     radius = 80.0,
+    center = vector3(295.898896, 2857.450440, 42.444702),
     maxPlayers = 15,
     
     markerColor = {
@@ -169,13 +157,9 @@ Config.Zone2 = {
 Config.Zone3 = {
     enabled = true,
     
-    spawn = { 
-        pos = vector3(78.131866, -390.408782, 38.333374), 
-        heading = 90.0,
-        image = ("images/zone3.png"):format(resourceName)
-    },
-    
+    image = ("images/zone3.png"):format(resourceName),
     radius = 100.0,
+    center = vector3(78.131866, -390.408782, 38.333374),
     maxPlayers = 15,
     
     markerColor = {
@@ -203,13 +187,9 @@ Config.Zone3 = {
 Config.Zone4 = {
     enabled = true,
     
-    spawn = { 
-        pos = vector3(-1693.279174, -2834.571534, 430.912110), 
-        heading = 0.0,
-        image = ("images/zone4.png"):format(resourceName)
-    },
-    
+    image = ("images/zone4.png"):format(resourceName),
     radius = 100.0,
+    center = vector3(-1693.279174, -2834.571534, 430.912110),
     maxPlayers = 15,
     
     markerColor = {
@@ -356,7 +336,7 @@ Config.Threads = {
     deathCheck = 0,                     -- Vérification de la mort (0 = chaque frame)
     staminaReset = 0,                   -- Reset de la stamina (0 = chaque frame)
     zoneMarker = 0,                     -- Affichage du marqueur de zone
-    lobbyMarker = 0,                    -- Affichage du marqueur du lobby
+    pedInteraction = 0,                 -- Vérification interaction PED
     zoneCheck = 500,                    -- Vérification de sortie de zone
     autoJoin = 500                      -- Vérification auto-join
 }
@@ -367,3 +347,4 @@ Config.Threads = {
 print("^2[Gunfight Arena]^0 Configuration chargée avec succès!")
 print("^3[Gunfight Arena]^0 Debug Mode: " .. (Config.Debug and "^2ACTIVÉ" or "^1DÉSACTIVÉ"))
 print("^3[Gunfight Arena]^0 Instances: " .. (Config.UseInstances and "^2ACTIVÉES" or "^1DÉSACTIVÉES"))
+print("^3[Gunfight Arena]^0 PED Lobby: " .. (Config.LobbyPed.enabled and "^2ACTIVÉ" or "^1DÉSACTIVÉ"))
