@@ -1,5 +1,5 @@
 // ================================
-// GUNFIGHT ARENA - SCRIPT.JS (VERSION FINALE CORRIGÉE)
+// GUNFIGHT ARENA - SCRIPT.JS (VERSION FINALE CORRIGÉE - SANS CONSOLE.LOGS)
 // Fix focus NUI : libération uniquement depuis le jeu, pas depuis le lobby
 // ================================
 
@@ -43,8 +43,8 @@ window.addEventListener('message', (event) => {
         case 'clearKillFeed':
             clearKillFeed();
             break;
-        default:
-            console.log("Action inconnue:", data.action);
+        // default:
+        //     console.log("Action inconnue:", data.action); // Ligne supprimée
     }
 });
 
@@ -69,7 +69,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const personalStatsBtn = document.getElementById('personal-stats-btn');
     if (personalStatsBtn) {
         personalStatsBtn.addEventListener('click', () => {
-            console.log("Demande stats personnelles");
+            // console.log("Demande stats personnelles"); // Ligne supprimée
             postNUIMessage('getPersonalStats', {});
         });
     }
@@ -77,7 +77,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const viewFullBtn = document.getElementById('view-full-leaderboard');
     if (viewFullBtn) {
         viewFullBtn.addEventListener('click', () => {
-            console.log("Ouverture classement complet");
+            // console.log("Ouverture classement complet"); // Ligne supprimée
             postNUIMessage('getGlobalLeaderboard', {});
         });
     }
@@ -124,7 +124,7 @@ function showUI() {
     const zoneList = document.getElementById('zone-list');
     
     if (!arenaUI || !zoneList) {
-        console.error("Elements UI non trouvés");
+        // console.error("Elements UI non trouvés"); // Ligne supprimée
         return;
     }
 
@@ -164,7 +164,7 @@ function showUI() {
     });
 
     arenaUI.style.display = 'flex';
-    console.log("Chargement du classement lobby sidebar...");
+    // console.log("Chargement du classement lobby sidebar..."); // Ligne supprimée
     postNUIMessage('getLobbyScoreboard', {});
 }
 
@@ -179,24 +179,24 @@ function closeUI() {
         headers: { 'Content-Type': 'application/json; charset=UTF-8' },
         body: JSON.stringify({})
     }).then(() => {
-        console.log("✓ Lobby fermé, focus libéré");
+        // console.log("✓ Lobby fermé, focus libéré"); // Ligne supprimée
     }).catch(err => {
-        console.error("Erreur lors de la fermeture du lobby:", err);
+        // console.error("Erreur lors de la fermeture du lobby:", err); // Ligne supprimée
     });
 }
 
 function selectZone(zoneNumber) {
-    console.log("Zone sélectionnée:", zoneNumber);
+    // console.log("Zone sélectionnée:", zoneNumber); // Ligne supprimée
     
     fetch(`https://${GetParentResourceName()}/zoneSelected`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json; charset=UTF-8' },
         body: JSON.stringify({ zone: zoneNumber })
     }).then(() => {
-        console.log("Sélection de zone envoyée");
+        // console.log("Sélection de zone envoyée"); // Ligne supprimée
         closeUI();
     }).catch(err => {
-        console.error("Erreur lors de la sélection de la zone:", err);
+        // console.error("Erreur lors de la sélection de la zone:", err); // Ligne supprimée
     });
 }
 
@@ -204,7 +204,7 @@ function selectZone(zoneNumber) {
 // UPDATE ZONE PLAYERS COUNT
 // ================================
 function updateZonePlayers(zones) {
-    console.log("Mise à jour des zones:", zones);
+    // console.log("Mise à jour des zones:", zones); // Ligne supprimée
     currentZoneData = zones;
 
     const arenaUI = document.getElementById('arena-ui');
@@ -250,7 +250,7 @@ function showStats(stats) {
     const statsList = document.getElementById('stats-list');
     
     if (!statsUI || !statsList) {
-        console.error("Elements stats non trouvés");
+        // console.error("Elements stats non trouvés"); // Ligne supprimée
         return;
     }
 
@@ -291,9 +291,9 @@ function closeStatsUI() {
         headers: { 'Content-Type': 'application/json; charset=UTF-8' },
         body: JSON.stringify({})
     }).then(() => {
-        console.log("✓ Leaderboard fermé (en jeu), focus libéré");
+        // console.log("✓ Leaderboard fermé (en jeu), focus libéré"); // Ligne supprimée
     }).catch(err => {
-        console.error("Erreur lors de la fermeture du leaderboard:", err);
+        // console.error("Erreur lors de la fermeture du leaderboard:", err); // Ligne supprimée
     });
 }
 
@@ -301,11 +301,11 @@ function closeStatsUI() {
 // PERSONAL STATS UI (DEPUIS LE LOBBY)
 // ================================
 function showPersonalStats(stats) {
-    console.log("Affichage des stats personnelles:", stats);
+    // console.log("Affichage des stats personnelles:", stats); // Ligne supprimée
     
     const personalStatsUI = document.getElementById('personal-stats-ui');
     if (!personalStatsUI) {
-        console.error("Element 'personal-stats-ui' non trouvé");
+        // console.error("Element 'personal-stats-ui' non trouvé"); // Ligne supprimée
         return;
     }
 
@@ -355,9 +355,9 @@ function closePersonalStatsUI() {
         headers: { 'Content-Type': 'application/json; charset=UTF-8' },
         body: JSON.stringify({})
     }).then(() => {
-        console.log("✓ Stats personnelles fermées, focus reste actif (lobby)");
+        // console.log("✓ Stats personnelles fermées, focus reste actif (lobby)"); // Ligne supprimée
     }).catch(err => {
-        console.error("Erreur lors de la fermeture des stats personnelles:", err);
+        // console.error("Erreur lors de la fermeture des stats personnelles:", err); // Ligne supprimée
     });
 }
 
@@ -365,13 +365,13 @@ function closePersonalStatsUI() {
 // GLOBAL LEADERBOARD UI (DEPUIS LE LOBBY)
 // ================================
 function showGlobalLeaderboard(stats) {
-    console.log("Affichage du classement global:", stats);
+    // console.log("Affichage du classement global:", stats); // Ligne supprimée
     
     const globalLeaderboardUI = document.getElementById('global-leaderboard-ui');
     const leaderboardList = document.getElementById('global-leaderboard-list');
     
     if (!globalLeaderboardUI || !leaderboardList) {
-        console.error("Elements de classement global non trouvés");
+        // console.error("Elements de classement global non trouvés"); // Ligne supprimée
         return;
     }
 
@@ -413,9 +413,9 @@ function closeGlobalLeaderboardUI() {
         headers: { 'Content-Type': 'application/json; charset=UTF-8' },
         body: JSON.stringify({})
     }).then(() => {
-        console.log("✓ Classement global fermé, focus reste actif (lobby)");
+        // console.log("✓ Classement global fermé, focus reste actif (lobby)"); // Ligne supprimée
     }).catch(err => {
-        console.error("Erreur lors de la fermeture du classement global:", err);
+        // console.error("Erreur lors de la fermeture du classement global:", err); // Ligne supprimée
     });
 }
 
@@ -423,7 +423,7 @@ function closeGlobalLeaderboardUI() {
 // LOBBY LEADERBOARD SIDEBAR
 // ================================
 function displayLobbyLeaderboard(stats) {
-    console.log("Affichage lobby leaderboard:", stats);
+    // console.log("Affichage lobby leaderboard:", stats); // Ligne supprimée
     const lobbyList = document.getElementById('lobby-leaderboard-list');
     if (!lobbyList) return;
 
@@ -472,7 +472,7 @@ function displayLobbyLeaderboard(stats) {
         lobbyList.appendChild(entry);
     });
 
-    console.log(`Lobby leaderboard affiché: ${top10.length} entrées`);
+    // console.log(`Lobby leaderboard affiché: ${top10.length} entrées`); // Ligne supprimée
 }
 
 // ================================
@@ -481,7 +481,7 @@ function displayLobbyLeaderboard(stats) {
 function addKillFeedMessage(message) {
     const killfeedUI = document.getElementById('killfeed-ui');
     if (!killfeedUI) {
-        console.error("Element killfeed-ui non trouvé");
+        // console.error("Element killfeed-ui non trouvé"); // Ligne supprimée
         return;
     }
 
@@ -546,7 +546,7 @@ function postNUIMessage(action, data = {}) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json; charset=UTF-8' },
         body: JSON.stringify(data)
-    }).catch(err => console.error(`Erreur lors de l'envoi du message ${action}:`, err));
+    }).catch(err => { /* console.error(`Erreur lors de l'envoi du message ${action}:`, err) */ }); // Ligne supprimée
 }
 
 function GetParentResourceName() {
@@ -563,9 +563,9 @@ function GetParentResourceName() {
     return 'gunfight_arena';
 }
 
-// ================================
-// CONSOLE INFO
-// ================================
-console.log('%c🎮 Gunfight Arena UI Loaded (VERSION 3.0)', 'color: #00fff7; font-size: 16px; font-weight: bold;');
-console.log('%c✓ PED au lobby + Spawn aléatoire', 'color: #00ff88; font-size: 12px;');
-console.log('Resource Name:', GetParentResourceName());
+// // ================================
+// // CONSOLE INFO (Bloc entier supprimé)
+// // ================================
+// console.log('%c🎮 Gunfight Arena UI Loaded (VERSION 3.0)', 'color: #00fff7; font-size: 16px; font-weight: bold;');
+// console.log('%c✓ PED au lobby + Spawn aléatoire', 'color: #00ff88; font-size: 12px;');
+// console.log('Resource Name:', GetParentResourceName());
