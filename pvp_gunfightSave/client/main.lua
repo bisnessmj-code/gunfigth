@@ -1,4 +1,4 @@
-DebugSuccess('Script chargé')
+print('^2[PVP CLIENT]^7 Script chargé')
 
 local pedSpawned = false
 local pedEntity = nil
@@ -6,27 +6,27 @@ local uiOpen = false
 local inQueue = false
 local queueStartTime = 0
 local inMatch = false
-local playerTeam = nil
+local playerTeam = nil -- Stocke l'équipe du joueur (team1 ou team2)
 
 -- Fonction pour spawner le PED
 local function SpawnPed()
     if pedSpawned then 
-        DebugWarn('PED déjà spawné')
+        print('^3[PVP CLIENT]^7 PED déjà spawné')
         return 
     end
     
-    DebugClient('Début spawn PED')
+    print('^2[PVP CLIENT]^7 Début spawn PED')
     local pedModel = GetHashKey(Config.PedLocation.model)
     
-    DebugClient('Requête modèle: %s', Config.PedLocation.model)
+    print('^2[PVP CLIENT]^7 Requête modèle:', Config.PedLocation.model)
     RequestModel(pedModel)
     while not HasModelLoaded(pedModel) do
         Wait(100)
     end
-    DebugClient('Modèle chargé')
+    print('^2[PVP CLIENT]^7 Modèle chargé')
     
     pedEntity = CreatePed(4, pedModel, Config.PedLocation.coords.x, Config.PedLocation.coords.y, Config.PedLocation.coords.z - 1.0, Config.PedLocation.coords.w, false, true)
-    DebugClient('PED créé, entity: %d', pedEntity)
+    print('^2[PVP CLIENT]^7 PED créé, entity:', pedEntity)
     
     SetEntityAsMissionEntity(pedEntity, true, true)
     SetPedFleeAttributes(pedEntity, 0, 0)
@@ -41,94 +41,94 @@ local function SpawnPed()
     end
     
     pedSpawned = true
-    DebugSuccess('PED spawné avec succès')
+    print('^2[PVP CLIENT]^7 PED spawné avec succès')
 end
 
 -- Fonction pour ouvrir l'UI
 local function OpenUI()
     if uiOpen then 
-        DebugWarn('UI déjà ouverte')
+        print('^3[PVP CLIENT]^7 UI déjà ouverte')
         return 
     end
     
-    DebugClient('Ouverture de l\'UI')
+    print('^2[PVP CLIENT]^7 Ouverture de l\'UI')
     
     SetNuiFocus(true, true)
-    DebugClient('SetNuiFocus(true, true) appelé')
+    print('^2[PVP CLIENT]^7 SetNuiFocus(true, true) appelé')
     
     SendNUIMessage({
         action = 'openUI'
     })
-    DebugClient('Message openUI envoyé')
+    print('^2[PVP CLIENT]^7 Message openUI envoyé')
     
     uiOpen = true
-    DebugClient('UI ouverte (uiOpen = true)')
+    print('^2[PVP CLIENT]^7 UI ouverte (uiOpen = true)')
 end
 
 -- Fonction pour fermer l'UI
 local function CloseUI()
     if not uiOpen then 
-        DebugWarn('UI déjà fermée')
+        print('^3[PVP CLIENT]^7 UI déjà fermée')
         return 
     end
     
-    DebugClient('Fermeture de l\'UI')
+    print('^2[PVP CLIENT]^7 Fermeture de l\'UI')
     
     SendNUIMessage({
         action = 'closeUI'
     })
-    DebugClient('Message closeUI envoyé au NUI')
+    print('^2[PVP CLIENT]^7 Message closeUI envoyé au NUI')
     
     Wait(100)
     
     SetNuiFocus(false, false)
-    DebugClient('SetNuiFocus(false, false) appelé')
+    print('^2[PVP CLIENT]^7 SetNuiFocus(false, false) appelé')
     
     SetNuiFocusKeepInput(false)
-    DebugClient('SetNuiFocusKeepInput(false) appelé')
+    print('^2[PVP CLIENT]^7 SetNuiFocusKeepInput(false) appelé')
     
     uiOpen = false
-    DebugClient('UI fermée (uiOpen = false)')
+    print('^2[PVP CLIENT]^7 UI fermée (uiOpen = false)')
 end
 
 -- Callback NUI pour fermer l'interface
 RegisterNUICallback('closeUI', function(data, cb)
-    DebugClient('Callback closeUI reçu du NUI')
+    print('^2[PVP CLIENT]^7 Callback closeUI reçu du NUI')
     cb('ok')
-    DebugClient('Callback répondu')
+    print('^2[PVP CLIENT]^7 Callback répondu')
     Wait(50)
     CloseUI()
 end)
 
 -- Event pour fermer l'UI depuis le serveur
 RegisterNetEvent('pvp:forceCloseUI', function()
-    DebugClient('Event pvp:forceCloseUI reçu')
+    print('^2[PVP CLIENT]^7 Event pvp:forceCloseUI reçu')
     CloseUI()
 end)
 
 -- Callback NUI pour rejoindre la queue
 RegisterNUICallback('joinQueue', function(data, cb)
-    DebugClient('Callback joinQueue reçu - Mode: %s', data.mode)
+    print('^2[PVP CLIENT]^7 Callback joinQueue reçu - Mode:', data.mode)
     cb('ok')
     
     TriggerServerEvent('pvp:joinQueue', data.mode)
-    DebugClient('Event pvp:joinQueue envoyé au serveur')
+    print('^2[PVP CLIENT]^7 Event pvp:joinQueue envoyé au serveur')
 end)
 
 -- Callback NUI pour voir les stats
 RegisterNUICallback('getStats', function(data, cb)
-    DebugClient('Callback getStats reçu')
+    print('^2[PVP CLIENT]^7 Callback getStats reçu')
     ESX.TriggerServerCallback('pvp:getPlayerStats', function(stats)
-        DebugClient('Stats reçues: %s', json.encode(stats))
+        print('^2[PVP CLIENT]^7 Stats reçues:', json.encode(stats))
         cb(stats)
     end)
 end)
 
 -- Callback NUI pour voir le leaderboard
 RegisterNUICallback('getLeaderboard', function(data, cb)
-    DebugClient('Callback getLeaderboard reçu')
+    print('^2[PVP CLIENT]^7 Callback getLeaderboard reçu')
     ESX.TriggerServerCallback('pvp:getLeaderboard', function(leaderboard)
-        DebugClient('Leaderboard reçu: %d entrées', #leaderboard)
+        print('^2[PVP CLIENT]^7 Leaderboard reçu:', #leaderboard, 'entrées')
         cb(leaderboard)
     end)
 end)
@@ -136,46 +136,46 @@ end)
 -- Callback NUI pour inviter un joueur
 RegisterNUICallback('invitePlayer', function(data, cb)
     local targetId = tonumber(data.targetId)
-    DebugClient('Callback invitePlayer reçu - Target ID: %d', targetId)
+    print('^2[PVP CLIENT]^7 Callback invitePlayer reçu - Target ID:', targetId)
     cb('ok')
     
     TriggerServerEvent('pvp:inviteToGroup', targetId)
-    DebugClient('Event pvp:inviteToGroup envoyé')
+    print('^2[PVP CLIENT]^7 Event pvp:inviteToGroup envoyé')
 end)
 
 -- Callback NUI pour quitter le groupe
 RegisterNUICallback('leaveGroup', function(data, cb)
-    DebugClient('Callback leaveGroup reçu')
+    print('^2[PVP CLIENT]^7 Callback leaveGroup reçu')
     cb('ok')
     
     TriggerServerEvent('pvp:leaveGroup')
-    DebugClient('Event pvp:leaveGroup envoyé')
+    print('^2[PVP CLIENT]^7 Event pvp:leaveGroup envoyé')
 end)
 
 -- Callback NUI pour kick un joueur du groupe
 RegisterNUICallback('kickPlayer', function(data, cb)
     local targetId = tonumber(data.targetId)
-    DebugClient('Callback kickPlayer reçu - Target ID: %d', targetId)
+    print('^2[PVP CLIENT]^7 Callback kickPlayer reçu - Target ID:', targetId)
     cb('ok')
     
     TriggerServerEvent('pvp:kickFromGroup', targetId)
-    DebugClient('Event pvp:kickFromGroup envoyé')
+    print('^2[PVP CLIENT]^7 Event pvp:kickFromGroup envoyé')
 end)
 
 -- Callback NUI pour changer son statut ready
 RegisterNUICallback('toggleReady', function(data, cb)
-    DebugClient('Callback toggleReady reçu')
+    print('^2[PVP CLIENT]^7 Callback toggleReady reçu')
     cb('ok')
     
     TriggerServerEvent('pvp:toggleReady')
-    DebugClient('Event pvp:toggleReady envoyé')
+    print('^2[PVP CLIENT]^7 Event pvp:toggleReady envoyé')
 end)
 
 -- Callback NUI pour obtenir les infos du groupe
 RegisterNUICallback('getGroupInfo', function(data, cb)
-    DebugClient('Callback getGroupInfo reçu')
+    print('^2[PVP CLIENT]^7 Callback getGroupInfo reçu')
     ESX.TriggerServerCallback('pvp:getGroupInfo', function(groupInfo)
-        DebugClient('GroupInfo reçu: %s', json.encode(groupInfo))
+        print('^2[PVP CLIENT]^7 GroupInfo reçu:', json.encode(groupInfo))
         cb(groupInfo)
     end)
 end)
@@ -183,45 +183,46 @@ end)
 -- Callback pour accepter une invitation
 RegisterNUICallback('acceptInvite', function(data, cb)
     local inviterId = tonumber(data.inviterId)
-    DebugClient('Callback acceptInvite reçu - Inviter ID: %d', inviterId)
+    print('^2[PVP CLIENT]^7 Callback acceptInvite reçu - Inviter ID:', inviterId)
     cb('ok')
     
     TriggerServerEvent('pvp:acceptInvite', inviterId)
-    DebugClient('Event pvp:acceptInvite envoyé')
+    print('^2[PVP CLIENT]^7 Event pvp:acceptInvite envoyé')
 end)
 
 -- Callback pour refuser une invitation
 RegisterNUICallback('declineInvite', function(data, cb)
-    DebugClient('Callback declineInvite reçu')
+    print('^2[PVP CLIENT]^7 Callback declineInvite reçu')
     cb('ok')
 end)
 
 -- Events pour mettre à jour l'UI du groupe
 RegisterNetEvent('pvp:updateGroupUI', function(groupData)
-    DebugClient('Event pvp:updateGroupUI reçu: %s', json.encode(groupData))
+    print('^2[PVP CLIENT]^7 Event pvp:updateGroupUI reçu:', json.encode(groupData))
     SendNUIMessage({
         action = 'updateGroup',
         group = groupData
     })
-    DebugClient('Message updateGroup envoyé au NUI')
+    print('^2[PVP CLIENT]^7 Message updateGroup envoyé au NUI')
 end)
 
 RegisterNetEvent('pvp:receiveInvite', function(inviterName, inviterId)
-    DebugClient('Event pvp:receiveInvite reçu de: %s (ID: %d)', inviterName, inviterId)
+    print('^2[PVP CLIENT]^7 Event pvp:receiveInvite reçu de:', inviterName, '(ID:', inviterId, ')')
     
     ESX.ShowNotification('~b~' .. inviterName .. '~w~ vous invite à rejoindre son groupe!')
     
+    -- NE PLUS afficher de popup automatiquement, juste envoyer au système de notifications
     SendNUIMessage({
         action = 'showInvite',
         inviterName = inviterName,
         inviterId = inviterId
     })
-    DebugClient('Message showInvite envoyé au NUI (queue système)')
+    print('^2[PVP CLIENT]^7 Message showInvite envoyé au NUI (queue système)')
 end)
 
 -- Event quand la recherche commence
 RegisterNetEvent('pvp:searchStarted', function(mode)
-    DebugClient('Recherche commencée pour le mode: %s', mode)
+    print('^2[PVP CLIENT]^7 Recherche commencée pour le mode:', mode)
     inQueue = true
     queueStartTime = GetGameTimer()
     
@@ -233,12 +234,13 @@ end)
 
 -- Event quand un match est trouvé
 RegisterNetEvent('pvp:matchFound', function()
-    DebugSuccess('Match trouvé!')
+    print('^2[PVP CLIENT]^7 Match trouvé!')
     inQueue = false
     inMatch = true
     
+    -- FERMER L'UI
     if uiOpen then
-        DebugClient('Fermeture de l\'UI (match trouvé)')
+        print('^2[PVP CLIENT]^7 Fermeture de l\'UI (match trouvé)')
         CloseUI()
     end
     
@@ -249,7 +251,7 @@ end)
 
 -- Event quand la recherche est annulée
 RegisterNetEvent('pvp:searchCancelled', function()
-    DebugClient('Recherche annulée')
+    print('^2[PVP CLIENT]^7 Recherche annulée')
     inQueue = false
     
     SendNUIMessage({
@@ -259,115 +261,141 @@ end)
 
 -- Callback pour annuler la recherche
 RegisterNUICallback('cancelSearch', function(data, cb)
-    DebugClient('Callback cancelSearch reçu')
+    print('^2[PVP CLIENT]^7 Callback cancelSearch reçu')
     cb('ok')
     
     TriggerServerEvent('pvp:cancelSearch')
-    DebugClient('Event pvp:cancelSearch envoyé')
+    print('^2[PVP CLIENT]^7 Event pvp:cancelSearch envoyé')
 end)
 
+-- ========================================
 -- EVENT TÉLÉPORTATION AVEC ACTIVATION ZONES
+-- ========================================
 RegisterNetEvent('pvp:teleportToSpawn', function(spawn, team, matchId, arenaKey)
-    DebugClient('Téléportation au spawn - Team: %s, Match: %d, Arène: %s', team, matchId, arenaKey or 'unknown')
-    DebugClient('Coordonnées: %.2f, %.2f, %.2f, %.2f', spawn.x, spawn.y, spawn.z, spawn.w)
+    print(string.format('^2[PVP CLIENT]^7 Téléportation au spawn - Team: %s, Match: %d, Arène: %s', team, matchId, arenaKey or 'unknown'))
+    print(string.format('^2[PVP CLIENT]^7 Coordonnées: %.2f, %.2f, %.2f, %.2f', spawn.x, spawn.y, spawn.z, spawn.w))
     
+    -- STOCKER L'ÉQUIPE DU JOUEUR
     playerTeam = team
-    DebugClient('Équipe du joueur définie: %s', playerTeam)
+    print(string.format('^2[PVP CLIENT]^7 Équipe du joueur définie: %s', playerTeam))
     
     local ped = PlayerPedId()
     
+    -- Ressusciter si mort
     if IsEntityDead(ped) then
         NetworkResurrectLocalPlayer(spawn.x, spawn.y, spawn.z, spawn.w, true, false)
     end
     
+    -- Fade out
     DoScreenFadeOut(500)
     Wait(500)
     
+    -- Téléporter
     SetEntityCoords(ped, spawn.x, spawn.y, spawn.z, false, false, false, false)
     SetEntityHeading(ped, spawn.w)
     
+    -- Freeze le joueur pendant le countdown
     FreezeEntityPosition(ped, true)
     
+    -- Heal complet
     SetEntityHealth(ped, 200)
     SetPedArmour(ped, 100)
     
+    -- Clear wounds
     ClearPedBloodDamage(ped)
     ResetPedVisibleDamage(ped)
     
+    -- DONNER UNIQUEMENT LE CAL50
     RemoveAllPedWeapons(ped, true)
     GiveWeaponToPed(ped, GetHashKey('WEAPON_PISTOL50'), 250, false, true)
     SetCurrentPedWeapon(ped, GetHashKey('WEAPON_PISTOL50'), true)
     
+    -- Munitions infinies
     SetPedInfiniteAmmoClip(ped, true)
     
     Wait(500)
     
+    -- Fade in
     DoScreenFadeIn(500)
     
+    -- Notification de team
     local teamColor = team == 'team1' and '~b~' or '~r~'
     ESX.ShowNotification(teamColor .. 'Vous êtes dans la ' .. (team == 'team1' and 'Team A (Bleu)' or 'Team B (Rouge)'))
     
+    -- ========================================
+    -- ACTIVATION DU SYSTÈME DE ZONES
+    -- ========================================
     if arenaKey then
-        DebugClient('🟢 Activation de la zone pour l\'arène: %s', arenaKey)
+        print(string.format('^2[PVP CLIENT]^7 🟢 Activation de la zone pour l\'arène: %s', arenaKey))
         TriggerEvent('pvp:setArenaZone', arenaKey)
         TriggerEvent('pvp:enableZones')
     else
-        DebugError('⚠️ ERREUR: Pas d\'arenaKey fournie!')
+        print('^1[PVP CLIENT]^7 ⚠️ ERREUR: Pas d\'arenaKey fournie!')
     end
     
-    DebugClient('Téléportation terminée, joueur freeze')
+    print('^2[PVP CLIENT]^7 Téléportation terminée, joueur freeze')
 end)
 
 -- Event pour respawn un joueur
 RegisterNetEvent('pvp:respawnPlayer', function(spawn)
-    DebugClient('Respawn du joueur')
+    print(string.format('^2[PVP CLIENT]^7 Respawn du joueur'))
     
     local ped = PlayerPedId()
     
+    -- Ressusciter si mort
     if IsEntityDead(ped) then
         NetworkResurrectLocalPlayer(spawn.x, spawn.y, spawn.z, spawn.w, true, false)
     end
     
+    -- Fade out RAPIDE
     DoScreenFadeOut(300)
     Wait(300)
     
+    -- Téléporter
     SetEntityCoords(ped, spawn.x, spawn.y, spawn.z, false, false, false, false)
     SetEntityHeading(ped, spawn.w)
     
+    -- Heal complet
     SetEntityHealth(ped, 200)
     SetPedArmour(ped, 100)
     
+    -- Clear wounds
     ClearPedBloodDamage(ped)
     ResetPedVisibleDamage(ped)
     
+    -- DONNER UNIQUEMENT LE CAL50
     RemoveAllPedWeapons(ped, true)
     GiveWeaponToPed(ped, GetHashKey('WEAPON_PISTOL50'), 250, false, true)
     SetCurrentPedWeapon(ped, GetHashKey('WEAPON_PISTOL50'), true)
     
+    -- Munitions infinies
     SetPedInfiniteAmmoClip(ped, true)
     
     Wait(300)
     
+    -- Fade in RAPIDE
     DoScreenFadeIn(300)
     
-    DebugClient('Respawn terminé')
+    print('^2[PVP CLIENT]^7 Respawn terminé')
 end)
 
 -- Event pour freeze un joueur
 RegisterNetEvent('pvp:freezePlayer', function()
-    DebugClient('Freeze du joueur')
+    print('^2[PVP CLIENT]^7 Freeze du joueur')
     local ped = PlayerPedId()
     FreezeEntityPosition(ped, true)
 end)
 
 -- Event pour le début d'un round
 RegisterNetEvent('pvp:roundStart', function(roundNumber)
-    DebugClient('Début du round %d', roundNumber)
+    print(string.format('^2[PVP CLIENT]^7 Début du round %d', roundNumber))
     
     local ped = PlayerPedId()
     
+    -- FREEZE le joueur
     FreezeEntityPosition(ped, true)
     
+    -- Animation "ROUND X"
     SendNUIMessage({
         action = 'showRoundStart',
         round = roundNumber
@@ -375,6 +403,7 @@ RegisterNetEvent('pvp:roundStart', function(roundNumber)
     
     Wait(2000)
     
+    -- Countdown 3-2-1
     for i = 3, 1, -1 do
         SendNUIMessage({
             action = 'showCountdown',
@@ -384,6 +413,7 @@ RegisterNetEvent('pvp:roundStart', function(roundNumber)
         Wait(1000)
     end
     
+    -- GO!
     SendNUIMessage({
         action = 'showGo'
     })
@@ -391,20 +421,22 @@ RegisterNetEvent('pvp:roundStart', function(roundNumber)
     
     Wait(1000)
     
+    -- UNFREEZE le joueur
     FreezeEntityPosition(ped, false)
 end)
 
 -- Event pour la fin d'un round
 RegisterNetEvent('pvp:roundEnd', function(winningTeam, score)
-    DebugClient('Fin du round - Équipe gagnante: %s, Mon équipe: %s, Victoire: %s', 
-        winningTeam, playerTeam or 'unknown', tostring(winningTeam == playerTeam))
+    print(string.format('^2[PVP CLIENT]^7 Fin du round - Équipe gagnante: %s, Mon équipe: %s, Victoire: %s', 
+        winningTeam, playerTeam or 'unknown', tostring(winningTeam == playerTeam)))
     
+    -- Animation HTML avec l'information de victoire/défaite
     SendNUIMessage({
         action = 'showRoundEnd',
         winner = winningTeam,
         score = score,
-        playerTeam = playerTeam,
-        isVictory = (winningTeam == playerTeam)
+        playerTeam = playerTeam,  -- NOUVEAU: Envoyer l'équipe du joueur
+        isVictory = (winningTeam == playerTeam)  -- NOUVEAU: Calculer si c'est une victoire
     })
     
     PlaySoundFrontend(-1, "CHECKPOINT_PERFECT", "HUD_MINI_GAME_SOUNDSET", true)
@@ -412,7 +444,7 @@ end)
 
 -- Event pour mettre à jour le score
 RegisterNetEvent('pvp:updateScore', function(score, round)
-    DebugClient('Mise à jour score - Team1: %d, Team2: %d, Round: %d', score.team1, score.team2, round)
+    print(string.format('^2[PVP CLIENT]^7 Mise à jour score - Team1: %d, Team2: %d, Round: %d', score.team1, score.team2, round))
     
     SendNUIMessage({
         action = 'updateScore',
@@ -423,7 +455,7 @@ end)
 
 -- Event pour afficher le HUD de score
 RegisterNetEvent('pvp:showScoreHUD', function(score, round)
-    DebugClient('Affichage HUD de score')
+    print('^2[PVP CLIENT]^7 Affichage HUD de score')
     
     SendNUIMessage({
         action = 'showScoreHUD',
@@ -434,27 +466,33 @@ end)
 
 -- Event pour masquer le HUD de score
 RegisterNetEvent('pvp:hideScoreHUD', function()
-    DebugClient('Masquage HUD de score')
+    print('^2[PVP CLIENT]^7 Masquage HUD de score')
     
     SendNUIMessage({
         action = 'hideScoreHUD'
     })
 end)
 
+-- ========================================
 -- EVENT FIN DE MATCH AVEC DÉSACTIVATION ZONES
+-- ========================================
 RegisterNetEvent('pvp:matchEnd', function(victory, score)
-    DebugClient('Fin du match - Victoire: %s', tostring(victory))
+    print(string.format('^2[PVP CLIENT]^7 Fin du match - Victoire: %s', tostring(victory)))
     
     inMatch = false
     
-    DebugClient('🔴 Désactivation du système de zones')
+    -- ========================================
+    -- DÉSACTIVATION DU SYSTÈME DE ZONES
+    -- ========================================
+    print('^2[PVP CLIENT]^7 🔴 Désactivation du système de zones')
     TriggerEvent('pvp:disableZones')
     
+    -- Animation HTML avec l'information de victoire/défaite
     SendNUIMessage({
         action = 'showMatchEnd',
         victory = victory,
         score = score,
-        playerTeam = playerTeam
+        playerTeam = playerTeam  -- NOUVEAU: Envoyer l'équipe du joueur
     })
     
     if victory then
@@ -463,11 +501,14 @@ RegisterNetEvent('pvp:matchEnd', function(victory, score)
         PlaySoundFrontend(-1, "CHECKPOINT_MISSED", "HUD_MINI_GAME_SOUNDSET", true)
     end
     
+    -- Attendre l'animation
     Wait(8000)
     
+    -- RÉINITIALISER L'ÉQUIPE DU JOUEUR
     playerTeam = nil
-    DebugClient('Équipe du joueur réinitialisée')
+    print('^2[PVP CLIENT]^7 Équipe du joueur réinitialisée')
     
+    -- RESSUSCITER AVANT DE TÉLÉPORTER
     local ped = PlayerPedId()
     if IsEntityDead(ped) then
         local coords = GetEntityCoords(ped)
@@ -476,20 +517,25 @@ RegisterNetEvent('pvp:matchEnd', function(victory, score)
         Wait(100)
     end
     
+    -- Téléporter au spawn PVP
     DoScreenFadeOut(500)
     Wait(500)
     
     SetEntityCoords(ped, Config.PedLocation.coords.x, Config.PedLocation.coords.y, Config.PedLocation.coords.z, false, false, false, false)
     SetEntityHeading(ped, Config.PedLocation.coords.w)
     
+    -- Heal complet
     SetEntityHealth(ped, 200)
     SetPedArmour(ped, 0)
     
+    -- Clear wounds
     ClearPedBloodDamage(ped)
     ResetPedVisibleDamage(ped)
     
+    -- Retirer TOUTES les armes
     RemoveAllPedWeapons(ped, true)
     
+    -- Désactiver les munitions infinies
     SetPedInfiniteAmmoClip(ped, false)
     
     DoScreenFadeIn(500)
@@ -497,20 +543,23 @@ RegisterNetEvent('pvp:matchEnd', function(victory, score)
     ESX.ShowNotification('~b~Retour au lobby')
 end)
 
--- Event pour retour forcé au lobby
+-- FIX PROBLEME 2: Event pour retour forcé au lobby (déconnexion adverse)
 RegisterNetEvent('pvp:forceReturnToLobby', function()
-    DebugClient('Retour forcé au lobby')
+    print('^2[PVP CLIENT]^7 Retour forcé au lobby')
     
     inMatch = false
     
-    DebugClient('🔴 Désactivation du système de zones (retour forcé)')
+    -- DÉSACTIVATION DU SYSTÈME DE ZONES
+    print('^2[PVP CLIENT]^7 🔴 Désactivation du système de zones (retour forcé)')
     TriggerEvent('pvp:disableZones')
     
+    -- RÉINITIALISER L'ÉQUIPE DU JOUEUR
     playerTeam = nil
-    DebugClient('Équipe du joueur réinitialisée (retour forcé)')
+    print('^2[PVP CLIENT]^7 Équipe du joueur réinitialisée (retour forcé)')
     
     local ped = PlayerPedId()
     
+    -- RESSUSCITER SI MORT
     if IsEntityDead(ped) then
         local coords = GetEntityCoords(ped)
         local heading = GetEntityHeading(ped)
@@ -518,12 +567,15 @@ RegisterNetEvent('pvp:forceReturnToLobby', function()
         Wait(100)
     end
     
+    -- Fade out
     DoScreenFadeOut(500)
     Wait(500)
     
+    -- Téléporter au spawn PVP
     SetEntityCoords(ped, Config.PedLocation.coords.x, Config.PedLocation.coords.y, Config.PedLocation.coords.z, false, false, false, false)
     SetEntityHeading(ped, Config.PedLocation.coords.w)
     
+    -- Heal et cleanup
     SetEntityHealth(ped, 200)
     SetPedArmour(ped, 0)
     ClearPedBloodDamage(ped)
@@ -531,8 +583,10 @@ RegisterNetEvent('pvp:forceReturnToLobby', function()
     RemoveAllPedWeapons(ped, true)
     FreezeEntityPosition(ped, false)
     
+    -- Désactiver les munitions infinies
     SetPedInfiniteAmmoClip(ped, false)
     
+    -- Fade in
     DoScreenFadeIn(500)
 end)
 
@@ -541,6 +595,7 @@ CreateThread(function()
     while true do
         Wait(1000)
         
+        -- Ne vérifier que si on est en match
         if not inMatch then
             goto continue
         end
@@ -558,10 +613,11 @@ CreateThread(function()
                 end
             end
             
-            DebugClient('Joueur mort - Killer: %s', killerPlayer or 'suicide')
+            print(string.format('^2[PVP CLIENT]^7 Joueur mort - Killer: %s', killerPlayer or 'suicide'))
             
             TriggerServerEvent('pvp:playerDied', killerPlayer)
             
+            -- Attendre la résurrection
             while IsEntityDead(ped) do
                 Wait(100)
             end
@@ -571,7 +627,7 @@ CreateThread(function()
     end
 end)
 
--- Thread STRICT pour bloquer TOUTES les armes sauf Cal50
+-- FIX PROBLEME 3: Thread STRICT pour bloquer TOUTES les armes sauf Cal50
 CreateThread(function()
     local cal50Hash = GetHashKey('WEAPON_PISTOL50')
     
@@ -581,34 +637,48 @@ CreateThread(function()
         if inMatch then
             local ped = PlayerPedId()
             
+            -- S'assurer qu'on a UNIQUEMENT le Cal50
             local hasWeapon, weaponHash = GetCurrentPedWeapon(ped, true)
             
+            -- Si on n'a pas d'arme ou que ce n'est pas le Cal50
             if not hasWeapon or weaponHash ~= cal50Hash then
-                DebugWarn('Arme incorrecte détectée, correction...')
+                print('^3[PVP CLIENT]^7 Arme incorrecte détectée, correction...')
                 
+                -- Supprimer TOUTES les armes
                 RemoveAllPedWeapons(ped, true)
                 
+                -- Redonner uniquement le Cal50
                 GiveWeaponToPed(ped, cal50Hash, 250, false, true)
                 SetCurrentPedWeapon(ped, cal50Hash, true)
                 SetPedInfiniteAmmoClip(ped, true)
             end
             
-            DisableControlAction(0, 14, true)
-            DisableControlAction(0, 15, true)
-            DisableControlAction(0, 16, true)
-            DisableControlAction(0, 17, true)
-            DisableControlAction(0, 37, true)
-            DisableControlAction(0, 157, true)
-            DisableControlAction(0, 158, true)
-            DisableControlAction(0, 159, true)
-            DisableControlAction(0, 160, true)
-            DisableControlAction(0, 161, true)
-            DisableControlAction(0, 162, true)
-            DisableControlAction(0, 163, true)
-            DisableControlAction(0, 164, true)
-            DisableControlAction(0, 165, true)
+            -- Bloquer TOUTES les touches de changement d'arme
+            -- Molette
+            DisableControlAction(0, 14, true)  -- INPUT_WEAPON_WHEEL_NEXT
+            DisableControlAction(0, 15, true)  -- INPUT_WEAPON_WHEEL_PREV
+            DisableControlAction(0, 16, true)  -- INPUT_SELECT_NEXT_WEAPON
+            DisableControlAction(0, 17, true)  -- INPUT_SELECT_PREV_WEAPON
+            
+            -- Wheel d'armes (TAB)
+            DisableControlAction(0, 37, true)  -- INPUT_SELECT_WEAPON
+            
+            -- Touches de raccourci 1-9 (tous les slots d'armes)
+            DisableControlAction(0, 157, true) -- INPUT_SELECT_WEAPON_UNARMED
+            DisableControlAction(0, 158, true) -- INPUT_SELECT_WEAPON_MELEE  
+            DisableControlAction(0, 159, true) -- INPUT_SELECT_WEAPON_HANDGUN
+            DisableControlAction(0, 160, true) -- INPUT_SELECT_WEAPON_SHOTGUN
+            DisableControlAction(0, 161, true) -- INPUT_SELECT_WEAPON_SMG
+            DisableControlAction(0, 162, true) -- INPUT_SELECT_WEAPON_AUTO_RIFLE
+            DisableControlAction(0, 163, true) -- INPUT_SELECT_WEAPON_SNIPER
+            DisableControlAction(0, 164, true) -- INPUT_SELECT_WEAPON_HEAVY
+            DisableControlAction(0, 165, true) -- INPUT_SELECT_WEAPON_SPECIAL
+            
+            -- Ne PAS bloquer le tir - le joueur doit pouvoir tirer avec le Cal50
+            -- DisableControlAction(0, 24, true) est retiré pour permettre de tirer
             
         else
+            -- Hors match, attendre plus longtemps
             Wait(500)
         end
     end
@@ -631,7 +701,7 @@ CreateThread(function()
 end)
 
 CreateThread(function()
-    DebugClient('Thread principal démarré')
+    print('^2[PVP CLIENT]^7 Thread principal démarré')
     SpawnPed()
     
     while true do
@@ -651,7 +721,7 @@ CreateThread(function()
             end
             
             if IsControlJustReleased(0, 38) then
-                DebugClient('Touche E pressée près du PED')
+                print('^2[PVP CLIENT]^7 Touche E pressée près du PED')
                 OpenUI()
             end
         end
@@ -664,16 +734,16 @@ end)
 AddEventHandler('onResourceStop', function(resourceName)
     if GetCurrentResourceName() ~= resourceName then return end
     
-    DebugClient('Resource arrêtée, nettoyage...')
+    print('^2[PVP CLIENT]^7 Resource arrêtée, nettoyage...')
     
     if DoesEntityExist(pedEntity) then
         DeleteEntity(pedEntity)
-        DebugClient('PED supprimé')
+        print('^2[PVP CLIENT]^7 PED supprimé')
     end
     
     SetNuiFocus(false, false)
     SetNuiFocusKeepInput(false)
-    DebugClient('Focus NUI libéré')
+    print('^2[PVP CLIENT]^7 Focus NUI libéré')
 end)
 
-DebugSuccess('Initialisation terminée')
+print('^2[PVP CLIENT]^7 Initialisation terminée')

@@ -1,50 +1,24 @@
 Config = {}
 
--- ========================================
--- SYSTÈME DE DEBUG
--- ========================================
-Config.Debug = {
-    enabled = true,        -- Activer/désactiver TOUS les logs de debug
-    
-    -- Niveaux de debug (si enabled = true)
-    levels = {
-        info = true,       -- Logs d'information généraux
-        success = true,    -- Logs de succès (vert)
-        warning = true,    -- Logs d'avertissement (jaune)
-        error = true,      -- Logs d'erreur (rouge)
-        client = true,     -- Logs client spécifiques
-        server = true,     -- Logs server spécifiques
-        ui = true,         -- Logs UI/NUI
-        bucket = true,     -- Logs routing buckets
-        elo = true,        -- Logs système ELO
-        zones = true,      -- Logs système de zones
-        groups = true,     -- Logs système de groupes
-        matchmaking = true -- Logs matchmaking
-    }
-}
-
--- ========================================
--- CONFIGURATION DU PED
--- ========================================
+-- Configuration du PED
 Config.PedLocation = {
-    coords = vector4(-2658.606690, -761.024170, 5.993408, 175.748032),
-    model = 's_m_y_dealer_01',
-    scenario = 'WORLD_HUMAN_CLIPBOARD'
+    coords = vector4(-2658.606690, -761.024170, 5.993408, 175.748032), -- Coordonnées devant le commissariat (exemple)
+    model = 's_m_y_dealer_01', -- Modèle du PED
+    scenario = 'WORLD_HUMAN_CLIPBOARD' -- Animation du PED
 }
 
-Config.InteractionDistance = 2.5
-Config.DrawMarker = true
+Config.InteractionDistance = 2.5 -- Distance pour interagir avec le PED
+Config.DrawMarker = true -- Afficher un marker au sol
 
--- ========================================
--- CONFIGURATION DES ARÈNES
--- ========================================
+-- Configuration des arènes
 Config.Arenas = {
     -- Arènes originales
     ['arena_industrial_1'] = {
         name = "Zone Industrielle #1",
+        -- Zone de combat (dome vert)
         zone = {
-            center = vector3(474.5, -1677.5, 29.2),
-            radius = 35.0
+            center = vector3(474.5, -1677.5, 29.2), -- Centre de l'arène
+            radius = 35.0 -- Rayon en mètres
         },
         teamA = {
             vector4(463.107696, -1668.487916, 29.313598, 240.944886),
@@ -61,6 +35,7 @@ Config.Arenas = {
     },
     ['arena_industrial_2'] = {
         name = "Zone Industrielle #2",
+        -- Zone de combat
         zone = {
             center = vector3(563.0, -1778.5, 29.2),
             radius = 35.0
@@ -78,8 +53,11 @@ Config.Arenas = {
             vector4(567.758240, -1768.720826, 29.145020, 212.598420)
         }
     },
+
+    -- Skatepark
     ['arena_skatepark'] = {
         name = "Skatepark",
+        -- Zone de combat
         zone = {
             center = vector3(-941.0, -792.0, 15.9),
             radius = 35.0
@@ -97,8 +75,11 @@ Config.Arenas = {
             vector4(-932.531860, -779.709900, 15.917968, 138.897628)
         }
     },
+
+    -- Restaurant
     ['arena_restaurant'] = {
         name = "Restaurant",
+        -- Zone de combat
         zone = {
             center = vector3(2581.0, 475.0, 108.5),
             radius = 35.0
@@ -116,8 +97,14 @@ Config.Arenas = {
             vector4(2584.997802, 459.006592, 108.440308, 348.661408)
         }
     },
+
+    ----------------------------------------------------------------
+    -- 🔥 NOUVELLES ARÈNES 🔥
+    ----------------------------------------------------------------
+
     ['arena_mazebank'] = {
         name = "Maze Bank",
+        -- Zone de combat
         zone = {
             center = vector3(-247.5, -1900.0, 27.7),
             radius = 45.0
@@ -135,8 +122,10 @@ Config.Arenas = {
             vector4(-234.131866, -1883.604370, 27.746460, 141.732284)
         }
     },
+
     ['arena_sandy'] = {
         name = "Sandy Shores",
+        -- Zone de combat
         zone = {
             center = vector3(236.5, 3103.0, 42.4),
             radius = 35.0
@@ -154,8 +143,10 @@ Config.Arenas = {
             vector4(260.360444, 3110.228516, 42.490112, 93.543304)
         }
     },
+
     ['arena_lucky'] = {
         name = "Lucky Street",
+        -- Zone de combat
         zone = {
             center = vector3(142.0, -1471.0, 29.2),
             radius = 35.0
@@ -173,8 +164,10 @@ Config.Arenas = {
             vector4(155.986816, -1481.894532, 29.111328, 51.023624)
         }
     },
+
     ['arena_chiotes'] = {
         name = "Chiotes",
+        -- Zone de combat
         zone = {
             center = vector3(-1389.5, -1326.0, 4.15),
             radius = 35.0
@@ -192,8 +185,10 @@ Config.Arenas = {
             vector4(-1388.479126, -1318.694458, 4.139892, 161.574798)
         }
     },
+
     ['arena_toit'] = {
         name = "Toit Maze",
+        -- Zone de combat
         zone = {
             center = vector3(103.0, -872.0, 134.75),
             radius = 35.0
@@ -211,8 +206,10 @@ Config.Arenas = {
             vector4(121.424180, -878.228576, 134.759766, 65.196854)
         }
     },
+
     ['arena_maison'] = {
         name = "Maison de Luxe",
+        -- Zone de combat
         zone = {
             center = vector3(-130.0, 1012.5, 235.85),
             radius = 35.0
@@ -232,9 +229,8 @@ Config.Arenas = {
     }
 }
 
--- ========================================
--- CONFIGURATION DES LOADOUTS
--- ========================================
+
+-- Configuration des loadouts
 Config.Loadouts = {
     ['classic'] = {
         name = "Classique",
@@ -252,15 +248,11 @@ Config.Loadouts = {
     }
 }
 
--- ========================================
--- CONFIGURATION DES ROUNDS
--- ========================================
-Config.RoundTime = 180
-Config.MaxRounds = 5
-Config.RespawnDelay = 5
+-- Configuration des rounds
+Config.RoundTime = 180 -- Temps par round en secondes
+Config.MaxRounds = 5 -- Nombre de rounds pour gagner
+Config.RespawnDelay = 5 -- Délai avant respawn (secondes)
 
--- ========================================
--- CONFIGURATION ELO
--- ========================================
+-- Configuration ELO
 Config.StartingELO = 1000
-Config.KFactor = 32
+Config.KFactor = 32 -- Facteur K pour le calcul ELO

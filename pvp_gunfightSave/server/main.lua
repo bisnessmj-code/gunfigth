@@ -1,10 +1,16 @@
 -- ========================================
--- PVP GUNFIGHT - SERVER MAIN  
--- Version: 2.3.0 - Routing Buckets + Zones + ELO + Debug System
+-- PVP GUNFIGHT - SERVER MAIN
+-- Version: 2.1.0 - Routing Buckets + Zones
+-- Correctifs:
+-- - Envoi de l'équipe au client pour animations correctes
+-- - Envoi de l'arenaKey pour le système de zones
 -- ========================================
 
-DebugServer('Chargement du système PVP avec instances et ELO...')
+print('^2[PVP SERVER]^7 Chargement du système PVP avec instances...')
 
+-- ========================================
+-- VARIABLES GLOBALES
+-- ========================================
 local queues = {
     ['1v1'] = {},
     ['2v2'] = {},
@@ -13,12 +19,16 @@ local queues = {
 }
 
 local activeMatches = {}
-local playersInQueue = {}
-local playerCurrentMatch = {}
-local playerCurrentBucket = {}
+local playersInQueue = {} -- [playerId] = {mode, startTime, groupMembers}
+local playerCurrentMatch = {} -- [playerId] = matchId
+local playerCurrentBucket = {} -- [playerId] = bucketId
 
-local nextBucketId = 100
+-- Compteur de buckets pour les instances
+local nextBucketId = 100 -- On commence à 100 pour éviter les buckets système
 
+-- ========================================
+-- INITIALISATION BASE DE DONNÉES
+-- ========================================
 MySQL.ready(function()
     MySQL.query([[
         CREATE TABLE IF NOT EXISTS pvp_stats (
@@ -38,71 +48,90 @@ MySQL.ready(function()
         )
     ]])
     
-    DebugSuccess('Base de données initialisée')
+    print('^2[PVP GunFight]^7 Base de données initialisée')
 end)
 
+-- ========================================
+-- SYSTÈME DE ROUTING BUCKETS (INSTANCES)
+-- ========================================
+
+-- Fonction pour créer un bucket unique pour un match
 local function CreateMatchBucket()
     local bucketId = nextBucketId
     nextBucketId = nextBucketId + 1
     
-    DebugBucket('Création du bucket %d', bucketId)
+    print(string.format('^2[PVP BUCKET]^7 Création du bucket %d', bucketId))
     
     return bucketId
 end
 
+-- Fonction pour assigner un joueur à un bucket
 local function SetPlayerBucket(playerId, bucketId)
-    if playerId <= 0 then return end
+    if playerId <= 0 then return end -- Skip bots
     
     SetPlayerRoutingBucket(playerId, bucketId)
     playerCurrentBucket[playerId] = bucketId
     
-    DebugBucket('Joueur %d assigné au bucket %d', playerId, bucketId)
+    print(string.format('^2[PVP BUCKET]^7 Joueur %d assigné au bucket %d', playerId, bucketId))
 end
 
+-- Fonction pour remettre un joueur dans le monde public (bucket 0)
 local function ResetPlayerBucket(playerId)
-    if playerId <= 0 then return end
+    if playerId <= 0 then return end -- Skip bots
     
     SetPlayerRoutingBucket(playerId, 0)
     playerCurrentBucket[playerId] = nil
     
-    DebugBucket('Joueur %d remis dans le bucket public (0)', playerId)
+    print(string.format('^2[PVP BUCKET]^7 Joueur %d remis dans le bucket public (0)', playerId))
 end
 
+-- ========================================
+-- SYSTÈME DE MATCHMAKING AVEC GROUPES
+-- ========================================
+
+-- Event pour rejoindre une queue
 RegisterNetEvent('pvp:joinQueue', function(mode)
     local src = source
     local xPlayer = ESX.GetPlayerFromId(src)
     
     if not xPlayer then return end
     
-    DebugMatchmaking('%s (%d) veut rejoindre la queue %s', xPlayer.getName(), src, mode)
+    print(string.format('^2[PVP SERVER]^7 %s (%d) veut rejoindre la queue %s', xPlayer.getName(), src, mode))
     
+    -- Vérifier si le joueur est déjà en queue
     if playersInQueue[src] then
-        DebugWarn('Joueur déjà en queue')
+        print('^3[PVP SERVER]^7 Joueur déjà en queue')
         TriggerClientEvent('esx:showNotification', src, '~r~Vous êtes déjà en file d\'attente!')
         return
     end
     
+    -- Récupérer le groupe du joueur
     local group = exports['pvp_gunfight']:GetPlayerGroup(src)
     
     local playersToQueue = {}
     
     if group then
-        DebugMatchmaking('Joueur dans un groupe avec %d membres', #group.members)
+        -- LE JOUEUR EST DANS UN GROUPE
+        print(string.format('^2[PVP SERVER]^7 Joueur dans un groupe avec %d membres', #group.members))
         
+        -- Vérifier que c'est le leader
         if group.leaderId ~= src then
-            DebugWarn('N\'est pas le leader')
+            print('^3[PVP SERVER]^7 N\'est pas le leader')
             TriggerClientEvent('esx:showNotification', src, '~r~Seul le leader peut lancer la recherche!')
             return
         end
         
+        -- Déterminer le nombre de joueurs nécessaires pour le mode
         local playersNeededPerTeam = tonumber(mode:sub(1, 1))
         
+        -- Vérifier que le groupe a la bonne taille
         if #group.members ~= playersNeededPerTeam then
-            DebugWarn('Mauvaise taille de groupe : %d au lieu de %d', #group.members, playersNeededPerTeam)
+            print(string.format('^3[PVP SERVER]^7 Mauvaise taille de groupe : %d au lieu de %d', #group.members, playersNeededPerTeam))
             TriggerClientEvent('esx:showNotification', src, string.format('~r~Il faut exactement %d joueur(s) dans le groupe pour le mode %s!', playersNeededPerTeam, mode))
             return
         end
         
+        -- Vérifier que tous les membres sont prêts
         local allReady = true
         for memberId, isReady in pairs(group.ready) do
             if not isReady then
@@ -112,20 +141,23 @@ RegisterNetEvent('pvp:joinQueue', function(mode)
         end
         
         if not allReady then
-            DebugWarn('Tous les membres ne sont pas prêts')
+            print('^3[PVP SERVER]^7 Tous les membres ne sont pas prêts')
             TriggerClientEvent('esx:showNotification', src, '~r~Tous les membres doivent être prêts!')
             return
         end
         
+        -- Ajouter TOUS les membres du groupe
         for _, memberId in ipairs(group.members) do
             table.insert(playersToQueue, memberId)
         end
         
-        DebugMatchmaking('Ajout de %d joueurs du groupe à la queue', #playersToQueue)
+        print(string.format('^2[PVP SERVER]^7 Ajout de %d joueurs du groupe à la queue', #playersToQueue))
         
     else
-        DebugMatchmaking('Joueur solo')
+        -- LE JOUEUR EST SOLO
+        print('^2[PVP SERVER]^7 Joueur solo')
         
+        -- Seul le 1v1 est autorisé en solo
         if mode ~= '1v1' then
             TriggerClientEvent('esx:showNotification', src, '~r~Vous devez être dans un groupe pour les modes 2v2, 3v3 et 4v4!')
             return
@@ -134,6 +166,7 @@ RegisterNetEvent('pvp:joinQueue', function(mode)
         table.insert(playersToQueue, src)
     end
     
+    -- Ajouter tous les joueurs à la queue
     for _, playerId in ipairs(playersToQueue) do
         table.insert(queues[mode], playerId)
         playersInQueue[playerId] = {
@@ -142,35 +175,41 @@ RegisterNetEvent('pvp:joinQueue', function(mode)
             groupMembers = playersToQueue
         }
         
+        -- Notifier le client qu'il est en recherche
         TriggerClientEvent('pvp:searchStarted', playerId, mode)
         TriggerClientEvent('esx:showNotification', playerId, '~b~Recherche de partie en cours...')
     end
     
-    DebugMatchmaking('Queue %s: %d joueurs (ajout de %d)', mode, #queues[mode], #playersToQueue)
+    print(string.format('[PVP] Queue %s: %d joueurs (ajout de %d)', mode, #queues[mode], #playersToQueue))
     
+    -- Vérifier si on peut créer un match
     CheckAndCreateMatch(mode)
 end)
 
+-- Fonction pour vérifier et créer un match
 function CheckAndCreateMatch(mode)
-    local playersNeeded = tonumber(mode:sub(1, 1)) * 2
+    local playersNeeded = tonumber(mode:sub(1, 1)) * 2 -- 1v1 = 2, 2v2 = 4, etc.
     
-    DebugMatchmaking('Check queue %s : %d/%d joueurs', mode, #queues[mode], playersNeeded)
+    print(string.format('^2[PVP MATCHMAKING]^7 Check queue %s : %d/%d joueurs', mode, #queues[mode], playersNeeded))
     
     if #queues[mode] >= playersNeeded then
         local matchPlayers = {}
         
+        -- Retirer les joueurs de la queue
         for i = 1, playersNeeded do
             local playerId = table.remove(queues[mode], 1)
             table.insert(matchPlayers, playerId)
-            DebugMatchmaking('Joueur %d ajouté au match', playerId)
+            print(string.format('^2[PVP MATCHMAKING]^7 Joueur %d ajouté au match', playerId))
         end
         
+        -- Créer le match
         CreateMatch(mode, matchPlayers)
     else
-        DebugMatchmaking('Pas assez de joueurs (%d/%d)', #queues[mode], playersNeeded)
+        print(string.format('^3[PVP MATCHMAKING]^7 Pas assez de joueurs (%d/%d)', #queues[mode], playersNeeded))
     end
 end
 
+-- Fonction pour obtenir une arène aléatoire
 local function GetRandomArena()
     local arenaKeys = {}
     for key, _ in pairs(Config.Arenas) do
@@ -180,19 +219,25 @@ local function GetRandomArena()
     local randomIndex = math.random(1, #arenaKeys)
     local arenaKey = arenaKeys[randomIndex]
     
-    DebugServer('Arène sélectionnée: %s (%s)', arenaKey, Config.Arenas[arenaKey].name)
+    print(string.format('^2[PVP SERVER]^7 Arène sélectionnée: %s (%s)', arenaKey, Config.Arenas[arenaKey].name))
     
     return arenaKey, Config.Arenas[arenaKey]
 end
 
+-- ========================================
+-- FONCTION: CRÉER UN MATCH
+-- FIX: Stocker l'équipe de chaque joueur
+-- ========================================
 function CreateMatch(mode, players)
     local matchId = #activeMatches + 1
     
-    DebugServer('========== CRÉATION MATCH %d ==========', matchId)
-    DebugServer('Mode: %s avec %d joueurs', mode, #players)
+    print(string.format('^2[PVP SERVER]^7 ========== CRÉATION MATCH %d ==========', matchId))
+    print(string.format('^2[PVP SERVER]^7 Mode: %s avec %d joueurs', mode, #players))
     
+    -- CRÉER UN BUCKET UNIQUE POUR CE MATCH
     local bucketId = CreateMatchBucket()
     
+    -- Sélectionner une arène aléatoire
     local arenaKey, arena = GetRandomArena()
     
     activeMatches[matchId] = {
@@ -202,13 +247,14 @@ function CreateMatch(mode, players)
         bucketId = bucketId,
         team1 = {},
         team2 = {},
-        playerTeams = {},
+        playerTeams = {},  -- NOUVEAU: Table pour stocker l'équipe de chaque joueur
         score = {team1 = 0, team2 = 0},
         currentRound = 1,
         status = 'starting',
         startTime = os.time()
     }
     
+    -- Diviser les joueurs en équipes
     local halfSize = #players / 2
     for i, playerId in ipairs(players) do
         local team = nil
@@ -221,34 +267,46 @@ function CreateMatch(mode, players)
             team = 'team2'
         end
         
+        -- STOCKER L'ÉQUIPE DU JOUEUR
         activeMatches[matchId].playerTeams[playerId] = team
         
-        DebugServer('Joueur %d assigné à %s', playerId, team)
+        print(string.format('^2[PVP SERVER]^7 Joueur %d assigné à %s', playerId, team))
         
+        -- Retirer de la queue
         playersInQueue[playerId] = nil
+        
+        -- Enregistrer le match actuel du joueur
         playerCurrentMatch[playerId] = matchId
         
+        -- Retirer le joueur de son groupe quand il entre en match
         if playerId > 0 then
             exports['pvp_gunfight']:RemovePlayerFromGroup(playerId)
         end
         
+        -- ASSIGNER LE JOUEUR AU BUCKET DE L'INSTANCE
         SetPlayerBucket(playerId, bucketId)
     end
     
-    DebugServer('Match %d - Bucket: %d', matchId, bucketId)
-    DebugServer('Team 1: %d joueurs, Team 2: %d joueurs', 
-        #activeMatches[matchId].team1, #activeMatches[matchId].team2)
+    print(string.format('^2[PVP SERVER]^7 Match %d - Bucket: %d', matchId, bucketId))
+    print(string.format('^2[PVP SERVER]^7 Team 1: %d joueurs, Team 2: %d joueurs', 
+        #activeMatches[matchId].team1, #activeMatches[matchId].team2))
     
+    -- Téléporter les joueurs
     TeleportPlayersToArena(matchId, activeMatches[matchId], arena, arenaKey)
     
+    -- Notifier tous les joueurs
     for _, playerId in ipairs(players) do
         TriggerClientEvent('pvp:matchFound', playerId)
         TriggerClientEvent('esx:showNotification', playerId, '~g~Match trouvé! ~w~Arène: ~b~' .. arena.name)
+        
+        -- Afficher le HUD de score
         TriggerClientEvent('pvp:showScoreHUD', playerId, activeMatches[matchId].score, activeMatches[matchId].currentRound)
     end
     
+    -- Attendre la fin de la téléportation
     Wait(3000)
     
+    -- FREEZE tous les joueurs AVANT de commencer le round 1
     for _, playerId in ipairs(players) do
         if playerId > 0 then
             TriggerClientEvent('pvp:freezePlayer', playerId)
@@ -257,37 +315,54 @@ function CreateMatch(mode, players)
     
     Wait(1000)
     
+    -- Démarrer le premier round
     StartRound(matchId, activeMatches[matchId], arena)
     
-    DebugSuccess('Match %d créé: %s sur %s (Bucket: %d)', matchId, mode, arena.name, bucketId)
+    print(string.format('[PVP] Match %d créé: %s sur %s (Bucket: %d)', matchId, mode, arena.name, bucketId))
 end
 
+-- ========================================
+-- FONCTION: TÉLÉPORTER LES JOUEURS
+-- FIX: Envoyer l'arenaKey au client
+-- ========================================
 function TeleportPlayersToArena(matchId, match, arena, arenaKey)
-    DebugServer('Téléportation des joueurs pour le match %d', matchId)
+    print(string.format('^2[PVP SERVER]^7 Téléportation des joueurs pour le match %d', matchId))
     
+    -- Téléporter Team 1 (spawn A)
     for i, playerId in ipairs(match.team1) do
         if arena.teamA[i] then
             local spawn = arena.teamA[i]
             
             if playerId > 0 then
-                DebugServer('Team 1 - Joueur %d -> Spawn A%d', playerId, i)
+                print(string.format('^2[PVP SERVER]^7 Team 1 - Joueur %d -> Spawn A%d', playerId, i))
+                -- FIX: Envoyer l'arenaKey pour le système de zones
                 TriggerClientEvent('pvp:teleportToSpawn', playerId, spawn, 'team1', matchId, arenaKey)
             end
         end
     end
     
+    -- Téléporter Team 2 (spawn B)
     for i, playerId in ipairs(match.team2) do
         if arena.teamB[i] then
             local spawn = arena.teamB[i]
             
             if playerId > 0 then
-                DebugServer('Team 2 - Joueur %d -> Spawn B%d', playerId, i)
+                print(string.format('^2[PVP SERVER]^7 Team 2 - Joueur %d -> Spawn B%d', playerId, i))
+                -- FIX: Envoyer l'arenaKey pour le système de zones
                 TriggerClientEvent('pvp:teleportToSpawn', playerId, spawn, 'team2', matchId, arenaKey)
             end
         end
     end
 end
 
+-- Reste du fichier (callbacks, events, etc.) reste identique...
+-- Je vais créer la suite dans le prochain fichier
+
+-- ========================================
+-- CALLBACKS
+-- ========================================
+
+-- Callback pour obtenir les stats d'un joueur
 ESX.RegisterServerCallback('pvp:getPlayerStats', function(source, cb)
     local xPlayer = ESX.GetPlayerFromId(source)
     if not xPlayer then 
@@ -295,13 +370,13 @@ ESX.RegisterServerCallback('pvp:getPlayerStats', function(source, cb)
         return 
     end
     
-    DebugServer('Récupération stats pour %s (%s)', xPlayer.getName(), xPlayer.identifier)
+    print(string.format('^2[PVP SERVER]^7 Récupération stats pour %s (%s)', xPlayer.getName(), xPlayer.identifier))
     
     MySQL.single('SELECT * FROM pvp_stats WHERE identifier = ?', {
         xPlayer.identifier
     }, function(result)
         if result then
-            DebugServer('Stats trouvées: ELO %d, Kills %d, Deaths %d', result.elo, result.kills or 0, result.deaths or 0)
+            print(string.format('^2[PVP SERVER]^7 Stats trouvées: ELO %d, Kills %d, Deaths %d', result.elo, result.kills or 0, result.deaths or 0))
             
             result.name = result.name or xPlayer.getName()
             result.kills = result.kills or 0
@@ -309,7 +384,7 @@ ESX.RegisterServerCallback('pvp:getPlayerStats', function(source, cb)
             
             cb(result)
         else
-            DebugServer('Aucune stats trouvée, création...')
+            print('^2[PVP SERVER]^7 Aucune stats trouvée, création...')
             MySQL.insert('INSERT INTO pvp_stats (identifier, name, kills, deaths) VALUES (?, ?, 0, 0)', {
                 xPlayer.identifier,
                 xPlayer.getName()
@@ -329,11 +404,12 @@ ESX.RegisterServerCallback('pvp:getPlayerStats', function(source, cb)
     end)
 end)
 
+-- Callback pour obtenir le leaderboard
 ESX.RegisterServerCallback('pvp:getLeaderboard', function(source, cb)
-    DebugServer('Récupération du leaderboard')
+    print('^2[PVP SERVER]^7 Récupération du leaderboard')
     
     MySQL.query('SELECT * FROM pvp_stats ORDER BY elo DESC LIMIT 50', {}, function(results)
-        DebugServer('Leaderboard: %d entrées', #results)
+        print(string.format('^2[PVP SERVER]^7 Leaderboard: %d entrées', #results))
         
         for i, player in ipairs(results) do
             player.kills = player.kills or 0
@@ -345,10 +421,15 @@ ESX.RegisterServerCallback('pvp:getLeaderboard', function(source, cb)
     end)
 end)
 
+-- ========================================
+-- EVENTS
+-- ========================================
+
+-- Event pour annuler la recherche
 RegisterNetEvent('pvp:cancelSearch', function()
     local src = source
     
-    DebugServer('%d annule la recherche', src)
+    print(string.format('^2[PVP SERVER]^7 %s annule la recherche', src))
     
     if not playersInQueue[src] then
         return
@@ -357,7 +438,9 @@ RegisterNetEvent('pvp:cancelSearch', function()
     local queueData = playersInQueue[src]
     local groupMembers = queueData.groupMembers or {src}
     
+    -- Retirer TOUS les membres du groupe de la queue
     for _, memberId in ipairs(groupMembers) do
+        -- Retirer de la queue
         for i, playerId in ipairs(queues[queueData.mode]) do
             if playerId == memberId then
                 table.remove(queues[queueData.mode], i)
@@ -367,25 +450,32 @@ RegisterNetEvent('pvp:cancelSearch', function()
         
         playersInQueue[memberId] = nil
         
+        -- Notifier
         TriggerClientEvent('pvp:searchCancelled', memberId)
         TriggerClientEvent('esx:showNotification', memberId, '~y~Recherche annulée')
     end
 end)
 
+-- Event quand un joueur meurt
 RegisterNetEvent('pvp:playerDied', function(killerId)
     local victimId = source
     
-    DebugServer('Joueur %d tué par %s', victimId, killerId or 'suicide/zone')
+    print(string.format('^2[PVP SERVER]^7 Joueur %s tué par %s', victimId, killerId or 'suicide/zone'))
     
     local matchId = playerCurrentMatch[victimId]
     
     if matchId and activeMatches[matchId] then
         local match = activeMatches[matchId]
-        DebugServer('Mort dans le match %d', matchId)
+        print(string.format('^2[PVP SERVER]^7 Mort dans le match %d', matchId))
         HandlePlayerDeath(matchId, match, victimId, killerId)
     end
 end)
 
+-- ========================================
+-- GESTION DES ROUNDS ET MATCHS
+-- ========================================
+
+-- Fonction pour gérer la mort d'un joueur
 function HandlePlayerDeath(matchId, match, victimId, killerId)
     if match.status ~= 'playing' then return end
     
@@ -409,23 +499,25 @@ function HandlePlayerDeath(matchId, match, victimId, killerId)
     CheckRoundEnd(matchId, match)
 end
 
+-- Fonction pour vérifier si le round est terminé
 function CheckRoundEnd(matchId, match)
     local team1Alive = CountAlivePlayers(match.team1)
     local team2Alive = CountAlivePlayers(match.team2)
     
-    DebugServer('Team1 vivants: %d, Team2 vivants: %d', team1Alive, team2Alive)
+    print(string.format('^2[PVP SERVER]^7 Team1 vivants: %d, Team2 vivants: %d', team1Alive, team2Alive))
     
     if team1Alive == 0 then
-        DebugServer('Team 2 gagne le round!')
+        print('^2[PVP SERVER]^7 Team 2 gagne le round!')
         match.score.team2 = match.score.team2 + 1
         EndRound(matchId, match, 'team2')
     elseif team2Alive == 0 then
-        DebugServer('Team 1 gagne le round!')
+        print('^2[PVP SERVER]^7 Team 1 gagne le round!')
         match.score.team1 = match.score.team1 + 1
         EndRound(matchId, match, 'team1')
     end
 end
 
+-- Fonction pour compter les joueurs vivants
 function CountAlivePlayers(team)
     local count = 0
     for _, playerId in ipairs(team) do
@@ -444,22 +536,28 @@ function CountAlivePlayers(team)
     return count
 end
 
+-- Fonction pour terminer un round
 function EndRound(matchId, match, winningTeam)
     match.status = 'round_end'
     
     local arena = Config.Arenas[match.arena]
     
+    -- CRITIQUE : Calculer didWin pour CHAQUE joueur individuellement
     for _, playerId in ipairs(match.players) do
         if playerId > 0 then
+            -- Déterminer l'équipe du joueur depuis playerTeams
             local playerTeam = match.playerTeams[playerId]
+            
+            -- Calculer si le joueur a gagné ce round
             local didWin = (playerTeam == winningTeam)
             
+            -- Envoyer l'événement avec didWin
             TriggerClientEvent('pvp:roundEnd', playerId, winningTeam, match.score, playerTeam, didWin)
             TriggerClientEvent('pvp:updateScore', playerId, match.score, match.currentRound)
         end
     end
     
-    DebugServer('Score - Team1: %d, Team2: %d', match.score.team1, match.score.team2)
+    print(string.format('^2[PVP SERVER]^7 Score - Team1: %d, Team2: %d', match.score.team1, match.score.team2))
     
     if match.score.team1 >= Config.MaxRounds or match.score.team2 >= Config.MaxRounds then
         EndMatch(matchId, match)
@@ -484,8 +582,9 @@ function EndRound(matchId, match, winningTeam)
     end
 end
 
+-- Fonction pour respawn les joueurs
 function RespawnPlayers(matchId, match, arena)
-    DebugServer('Respawn des joueurs pour le round %d', match.currentRound)
+    print(string.format('^2[PVP SERVER]^7 Respawn des joueurs pour le round %d', match.currentRound))
     
     for i, playerId in ipairs(match.team1) do
         if arena.teamA[i] and playerId > 0 then
@@ -502,8 +601,9 @@ function RespawnPlayers(matchId, match, arena)
     end
 end
 
+-- Fonction pour démarrer un round
 function StartRound(matchId, match, arena)
-    DebugServer('Début du round %d', match.currentRound)
+    print(string.format('^2[PVP SERVER]^7 Début du round %d', match.currentRound))
     
     match.status = 'playing'
     match.roundStats = {}
@@ -516,8 +616,12 @@ function StartRound(matchId, match, arena)
     end
 end
 
+-- ========================================
+-- FONCTION: TERMINER LE MATCH
+-- FIX: Envoyer victoire/défaite basée sur l'équipe du joueur
+-- ========================================
 function EndMatch(matchId, match)
-    DebugServer('========== FIN DU MATCH %d ==========', matchId)
+    print(string.format('^2[PVP SERVER]^7 Fin du match %d', matchId))
     
     match.status = 'finished'
     
@@ -525,65 +629,47 @@ function EndMatch(matchId, match)
     local winners = winningTeam == 'team1' and match.team1 or match.team2
     local losers = winningTeam == 'team1' and match.team2 or match.team1
     
-    DebugServer('Équipe gagnante: %s', winningTeam)
-    DebugServer('Gagnants: %d joueurs | Perdants: %d joueurs', #winners, #losers)
-    
-    if match.mode == '1v1' then
-        DebugElo('Mode 1v1 détecté - Calcul ELO individuel')
-        
-        local winnerId = winners[1]
-        local loserId = losers[1]
-        
-        exports['pvp_gunfight']:UpdatePlayerElo1v1(winnerId, loserId, match.score)
-        
-    else
-        DebugElo('Mode %s détecté - Calcul ELO d\'équipe', match.mode)
-        
-        exports['pvp_gunfight']:UpdateTeamElo(winners, losers, match.score)
-    end
-    
-    for _, playerId in ipairs(winners) do
+    -- FIX: Envoyer victoire/défaite basée sur l'équipe de CHAQUE joueur
+    for _, playerId in ipairs(match.players) do
         if playerId > 0 then
             local playerTeam = match.playerTeams[playerId]
             local didWin = (playerTeam == winningTeam)
             
-            DebugServer('Joueur %d (Team: %s) - Victoire: %s', playerId, playerTeam, tostring(didWin))
+            print(string.format('^2[PVP SERVER]^7 Joueur %d (Team: %s) - Victoire: %s', playerId, playerTeam, tostring(didWin)))
             
-            UpdatePlayerWin(playerId)
+            if didWin then
+                UpdatePlayerWin(playerId)
+            else
+                UpdatePlayerLoss(playerId)
+            end
             
             TriggerClientEvent('pvp:matchEnd', playerId, didWin, match.score)
             TriggerClientEvent('pvp:hideScoreHUD', playerId)
+            TriggerClientEvent('esx:showNotification', playerId, didWin and '~g~VICTOIRE!' or '~r~DÉFAITE!')
             
             playerCurrentMatch[playerId] = nil
         end
     end
     
-    for _, playerId in ipairs(losers) do
-        if playerId > 0 then
-            local playerTeam = match.playerTeams[playerId]
-            local didWin = (playerTeam == winningTeam)
-            
-            UpdatePlayerLoss(playerId)
-            
-            TriggerClientEvent('pvp:matchEnd', playerId, didWin, match.score)
-            TriggerClientEvent('pvp:hideScoreHUD', playerId)
-            
-            playerCurrentMatch[playerId] = nil
-        end
-    end
-    
+    -- Attendre que les joueurs voient l'animation de fin
     Wait(8000)
     
-    DebugBucket('Remise des joueurs du match %d dans le bucket 0', matchId)
+    -- REMETTRE TOUS LES JOUEURS DANS LE BUCKET PUBLIC
+    print(string.format('^2[PVP BUCKET]^7 Remise des joueurs du match %d dans le bucket 0', matchId))
     for _, playerId in ipairs(match.players) do
         ResetPlayerBucket(playerId)
     end
     
+    -- Nettoyer le match
     Wait(2000)
     activeMatches[matchId] = nil
     
-    DebugSuccess('Match %d terminé et nettoyé - Stats et ELO mis à jour!', matchId)
+    print(string.format('^2[PVP SERVER]^7 Match %d terminé et nettoyé', matchId))
 end
+
+-- ========================================
+-- FONCTIONS DE MISE À JOUR DES STATS
+-- ========================================
 
 function UpdatePlayerKills(playerId, amount)
     local xPlayer = ESX.GetPlayerFromId(playerId)
@@ -592,9 +678,7 @@ function UpdatePlayerKills(playerId, amount)
     MySQL.query('UPDATE pvp_stats SET kills = kills + ? WHERE identifier = ?', {
         amount,
         xPlayer.identifier
-    }, function()
-        DebugSuccess('Kills mis à jour pour %s (+%d)', xPlayer.getName(), amount)
-    end)
+    })
 end
 
 function UpdatePlayerDeaths(playerId, amount)
@@ -604,9 +688,7 @@ function UpdatePlayerDeaths(playerId, amount)
     MySQL.query('UPDATE pvp_stats SET deaths = deaths + ? WHERE identifier = ?', {
         amount,
         xPlayer.identifier
-    }, function()
-        DebugSuccess('Deaths mis à jour pour %s (+%d)', xPlayer.getName(), amount)
-    end)
+    })
 end
 
 function UpdatePlayerWin(playerId)
@@ -615,9 +697,7 @@ function UpdatePlayerWin(playerId)
     
     MySQL.query('UPDATE pvp_stats SET wins = wins + 1, matches_played = matches_played + 1 WHERE identifier = ?', {
         xPlayer.identifier
-    }, function()
-        DebugSuccess('Win enregistré pour %s', xPlayer.getName())
-    end)
+    })
 end
 
 function UpdatePlayerLoss(playerId)
@@ -626,33 +706,36 @@ function UpdatePlayerLoss(playerId)
     
     MySQL.query('UPDATE pvp_stats SET losses = losses + 1, matches_played = matches_played + 1 WHERE identifier = ?', {
         xPlayer.identifier
-    }, function()
-        DebugSuccess('Loss enregistré pour %s', xPlayer.getName())
-    end)
+    })
 end
 
+-- ========================================
+-- GESTION DES DÉCONNEXIONS
+-- ========================================
+
 local function HandlePlayerDisconnect(playerId)
-    DebugServer('Gestion de la déconnexion du joueur %d', playerId)
+    print(string.format('^2[PVP SERVER]^7 Gestion de la déconnexion du joueur %s', playerId))
     
+    -- Remettre dans le bucket 0 (par sécurité)
     ResetPlayerBucket(playerId)
     
     local matchId = playerCurrentMatch[playerId]
     
     if not matchId or not activeMatches[matchId] then
-        DebugWarn('Joueur pas en match ou match inexistant')
+        print('^3[PVP SERVER]^7 Joueur pas en match ou match inexistant')
         return
     end
     
     local match = activeMatches[matchId]
     
-    DebugError('Joueur %d déconnecté pendant le match %d', playerId, matchId)
+    print(string.format('^1[PVP SERVER]^7 Joueur %s déconnecté pendant le match %d', playerId, matchId))
     
     UpdatePlayerLoss(playerId)
     
     local playerTeam = match.playerTeams[playerId]
     
     if not playerTeam then
-        DebugError('Impossible de trouver la team du joueur')
+        print('^1[PVP SERVER]^7 Impossible de trouver la team du joueur')
         return
     end
     
@@ -677,10 +760,10 @@ local function HandlePlayerDisconnect(playerId)
         end
     end
     
-    DebugServer('Joueurs restants - Team1: %d, Team2: %d', team1Count, team2Count)
+    print(string.format('^2[PVP SERVER]^7 Joueurs restants - Team1: %d, Team2: %d', team1Count, team2Count))
     
     if team1Count == 0 or team2Count == 0 then
-        DebugError('Une équipe est vide - Fin immédiate du match')
+        print('^1[PVP SERVER]^7 Une équipe est vide - Fin immédiate du match')
         
         local winningTeam = team1Count > 0 and 'team1' or 'team2'
         local winners = winningTeam == 'team1' and match.team1 or match.team2
@@ -693,7 +776,7 @@ local function HandlePlayerDisconnect(playerId)
         
         for _, winnerId in ipairs(winners) do
             if winnerId > 0 and GetPlayerPing(winnerId) > 0 and winnerId ~= playerId then
-                DebugServer('Téléportation du gagnant %d au lobby', winnerId)
+                print(string.format('^2[PVP SERVER]^7 Téléportation du gagnant %d au lobby', winnerId))
                 
                 TriggerClientEvent('pvp:hideScoreHUD', winnerId)
                 TriggerClientEvent('pvp:forceReturnToLobby', winnerId)
@@ -703,31 +786,35 @@ local function HandlePlayerDisconnect(playerId)
                 
                 playerCurrentMatch[winnerId] = nil
                 
+                -- REMETTRE DANS LE BUCKET PUBLIC
                 ResetPlayerBucket(winnerId)
             end
         end
         
         activeMatches[matchId] = nil
-        DebugServer('Match supprimé')
+        print('^2[PVP SERVER]^7 Match supprimé')
     end
     
     playerCurrentMatch[playerId] = nil
 end
 
+-- Nettoyer les queues quand un joueur se déconnecte
 AddEventHandler('playerDropped', function()
     local src = source
     
-    DebugServer('Joueur %d déconnecté, nettoyage...', src)
+    print(string.format('^2[PVP SERVER]^7 Joueur %s déconnecté, nettoyage...', src))
     
+    -- Retirer des queues
     if playersInQueue[src] then
         local queueData = playersInQueue[src]
         local groupMembers = queueData.groupMembers or {src}
         
+        -- Retirer TOUS les membres du groupe
         for _, memberId in ipairs(groupMembers) do
             for i, playerId in ipairs(queues[queueData.mode]) do
                 if playerId == memberId then
                     table.remove(queues[queueData.mode], i)
-                    DebugServer('Retiré de la queue %s', queueData.mode)
+                    print(string.format('^2[PVP SERVER]^7 Retiré de la queue %s', queueData.mode))
                     break
                 end
             end
@@ -735,7 +822,8 @@ AddEventHandler('playerDropped', function()
         end
     end
     
+    -- Gérer la déconnexion pendant un match
     HandlePlayerDisconnect(src)
 end)
 
-DebugSuccess('Système PVP avec instances et ELO chargé!')
+print('^2[PVP SERVER]^7 Système PVP avec instances chargé!')
