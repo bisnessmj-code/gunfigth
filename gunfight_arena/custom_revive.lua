@@ -5,7 +5,6 @@
 -- Ce fichier peut être désactivé si vous avez un système de mort personnalisé
 -- ================================================================================================
 
--- Récupération d'ESX
 ESX = exports["es_extended"]:getSharedObject()
 
 local deathHandled = false
@@ -35,37 +34,30 @@ Citizen.CreateThread(function()
     while true do
         Citizen.Wait(0)
         
-        -- Vérifier uniquement si le joueur est dans l'arène
         if isInArena then
             local playerPed = PlayerPedId()
             
-            -- Détection de la mort
             if IsEntityDead(playerPed) and not deathHandled then
                 DebugLog("=== MORT DÉTECTÉE ===")
                 DebugLog("Démarrage du processus de réanimation")
                 
                 deathHandled = true
                 
-                -- Attendre le délai configuré pour la réanimation
                 DebugLog("Attente de " .. Config.RespawnDelay .. "ms")
                 Citizen.Wait(Config.RespawnDelay)
                 
-                -- Vérifier si le joueur est toujours mort
                 if IsEntityDead(playerPed) then
                     DebugLog("Joueur toujours mort, réanimation en cours...")
                     
-                    -- Arrêt des animations pour éviter les conflits
                     ClearPedTasksImmediately(playerPed)
                     DebugLog("Animations nettoyées")
                     
-                    -- Déterminer le point de respawn selon la zone actuelle
                     if currentZone then
                         local zoneCfg = Config["Zone" .. currentZone]
                         if zoneCfg then
                             local randomIndex = math.random(1, #zoneCfg.respawnPoints)
                             DebugLog("Point de respawn sélectionné: " .. randomIndex .. " dans la zone " .. currentZone)
                             
-                            -- Notification au serveur
                             TriggerServerEvent('gunfightarena:playerDied', randomIndex, nil)
                             DebugLog("Événement de mort envoyé au serveur", "success")
                         else
@@ -80,7 +72,6 @@ Citizen.CreateThread(function()
                     DebugLog("Joueur déjà réanimé par un autre système")
                 end
                 
-                -- Délai supplémentaire pour éviter plusieurs déclenchements
                 DebugLog("Délai anti-spam de 3 secondes")
                 Citizen.Wait(3000)
                 deathHandled = false
@@ -88,7 +79,6 @@ Citizen.CreateThread(function()
                 DebugLog("=====================")
             end
         else
-            -- Reset si le joueur n'est pas dans l'arène
             if deathHandled then
                 deathHandled = false
                 DebugLog("Reset du gestionnaire (joueur hors arène)")

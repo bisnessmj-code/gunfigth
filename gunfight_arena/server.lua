@@ -241,7 +241,6 @@ RegisterCommand(Config.ExitCommand, function(source)
         
         if zone then
             zonePlayerCounts[zone] = math.max((zonePlayerCounts[zone] or 1) - 1, 0)
-            -- ✅ NOUVEAU : Retirer des stats de session de la zone
             zoneSessionStats[zone][source] = nil
             playerZone[source] = nil
         end
@@ -251,10 +250,7 @@ RegisterCommand(Config.ExitCommand, function(source)
         playerJoinTime[source] = nil
         updateZonePlayers()
         
-        -- ❌ SUPPRIMÉ : TriggerClientEvent('esx:showNotification', source, Config.Messages.exitArena)
         TriggerClientEvent('gunfightarena:exit', source)
-    else
-        -- ❌ SUPPRIMÉ : TriggerClientEvent('esx:showNotification', source, Config.Messages.notInArena)
     end
 end, false)
 
@@ -289,7 +285,6 @@ AddEventHandler('gunfightarena:leaveArena', function()
         
         if zone then
             zonePlayerCounts[zone] = math.max((zonePlayerCounts[zone] or 1) - 1, 0)
-            -- ✅ NOUVEAU : Retirer des stats de session de la zone
             zoneSessionStats[zone][src] = nil
             DebugLog("Zone " .. zone .. " : " .. zonePlayerCounts[zone] .. " joueurs restants")
             playerZone[src] = nil
@@ -335,7 +330,6 @@ AddEventHandler('gunfightarena:joinRequest', function(zoneNumber)
     if playerZone[src] then
         local oldZone = playerZone[src]
         zonePlayerCounts[oldZone] = math.max((zonePlayerCounts[oldZone] or 1) - 1, 0)
-        -- ✅ NOUVEAU : Retirer des stats de session de l'ancienne zone
         zoneSessionStats[oldZone][src] = nil
     end
     
@@ -344,7 +338,6 @@ AddEventHandler('gunfightarena:joinRequest', function(zoneNumber)
     zonePlayerCounts[zoneNumber] = (zonePlayerCounts[zoneNumber] or 0) + 1
     playerJoinTime[src] = os.time()
     
-    -- ✅ NOUVEAU : Initialiser les stats de session pour cette zone
     zoneSessionStats[zoneNumber][src] = {
         kills = 0,
         deaths = 0,
@@ -355,7 +348,6 @@ AddEventHandler('gunfightarena:joinRequest', function(zoneNumber)
         local bucketId = Config.ZoneBuckets[zoneNumber]
         if bucketId then
             SetPlayerInstance(src, bucketId)
-            -- ❌ SUPPRIMÉ : TriggerClientEvent('esx:showNotification', src, Config.Messages.instanceJoined .. " " .. zoneNumber)
         end
     end
     
@@ -364,7 +356,6 @@ AddEventHandler('gunfightarena:joinRequest', function(zoneNumber)
     updateZonePlayers()
     
     TriggerClientEvent('gunfightarena:join', src, zoneNumber)
-    -- ❌ SUPPRIMÉ : TriggerClientEvent('esx:showNotification', src, Config.Messages.enterArena)
 end)
 
 -- ================================================================================================
@@ -380,7 +371,6 @@ AddEventHandler('gunfightarena:playerDied', function(respawnIndex, killerId)
     stats.deaths = stats.deaths + 1
     killStreaks[src] = 0
     
-    -- ✅ NOUVEAU : Incrémenter les morts dans les stats de session de la zone
     local zone = playerZone[src]
     if zone and zoneSessionStats[zone] and zoneSessionStats[zone][src] then
         zoneSessionStats[zone][src].deaths = zoneSessionStats[zone][src].deaths + 1
@@ -391,7 +381,6 @@ AddEventHandler('gunfightarena:playerDied', function(respawnIndex, killerId)
         SavePlayerStats(xPlayer.identifier, xPlayer.getName(), stats)
     end
     
-    -- ❌ SUPPRIMÉ : TriggerClientEvent('esx:showNotification', src, Config.Messages.playerDied)
     TriggerClientEvent('gunfightarena:join', src, 0)
     
     if killerId and killerId ~= src then
@@ -407,7 +396,6 @@ AddEventHandler('gunfightarena:playerDied', function(respawnIndex, killerId)
                 killerStats.best_streak = killStreaks[killerId]
             end
             
-            -- ✅ NOUVEAU : Incrémenter les kills dans les stats de session de la zone
             local killerZone = playerZone[killerId]
             if killerZone and zoneSessionStats[killerZone] and zoneSessionStats[killerZone][killerId] then
                 zoneSessionStats[killerZone][killerId].kills = zoneSessionStats[killerZone][killerId].kills + 1
@@ -430,7 +418,6 @@ AddEventHandler('gunfightarena:playerDied', function(respawnIndex, killerId)
                 end
             end
             
-            -- ✅ GARDER : Notification de récompense
             TriggerClientEvent('esx:showNotification', killerId, Config.Messages.killRecorded .. reward)
             
             local killerName = killer.getName()
@@ -464,7 +451,6 @@ AddEventHandler('playerDropped', function(reason)
         local zone = playerZone[src]
         if zone then
             zonePlayerCounts[zone] = math.max((zonePlayerCounts[zone] or 1) - 1, 0)
-            -- ✅ NOUVEAU : Retirer des stats de session de la zone
             zoneSessionStats[zone][src] = nil
             playerZone[src] = nil
         end
@@ -482,14 +468,13 @@ AddEventHandler('playerDropped', function(reason)
 end)
 
 -- ================================================================================================
--- ✅ NOUVEAU EVENT : OBTENIR LES STATS DE LA ZONE EN COURS (TOUCHE G)
+-- EVENT : OBTENIR LES STATS DE LA ZONE EN COURS (TOUCHE G)
 -- ================================================================================================
 RegisterNetEvent('gunfightarena:getZoneStats')
 AddEventHandler('gunfightarena:getZoneStats', function(zoneNumber)
     local src = source
     
     if not arenaPlayers[src] or not zoneNumber then
-        -- ❌ SUPPRIMÉ : TriggerClientEvent('esx:showNotification', src, Config.Messages.accessStats)
         return
     end
     
@@ -497,7 +482,6 @@ AddEventHandler('gunfightarena:getZoneStats', function(zoneNumber)
     
     local leaderboard = {}
     
-    -- Récupérer tous les joueurs de cette zone et leurs stats de session
     if zoneSessionStats[zoneNumber] then
         for playerId, sessionStats in pairs(zoneSessionStats[zoneNumber]) do
             local xPlayer = ESX.GetPlayerFromId(playerId)
@@ -515,7 +499,6 @@ AddEventHandler('gunfightarena:getZoneStats', function(zoneNumber)
         end
     end
     
-    -- Trier par K/D puis par kills
     table.sort(leaderboard, function(a, b)
         if a.kd == b.kd then
             return a.kills > b.kills
@@ -638,9 +621,9 @@ end
 -- ================================================================================================
 Citizen.CreateThread(function()
     Wait(1000)
-    print("^2[Gunfight Arena v3.3-Fix]^0 Server démarré")
-    print("^3[Gunfight Arena v3.3-Fix]^0 Notifications spam supprimées")
-    print("^3[Gunfight Arena v3.3-Fix]^0 Touche G: Stats de zone en cours uniquement")
+    print("^2[Gunfight Arena v3.4-Help]^0 Server démarré")
+    print("^3[Gunfight Arena v3.4-Help]^0 Message d'aide activé")
+    print("^3[Gunfight Arena v3.4-Help]^0 Touche G: Stats de zone en cours uniquement")
     
     if Config.SaveStatsToDatabase then
         UpdateGlobalLeaderboard()

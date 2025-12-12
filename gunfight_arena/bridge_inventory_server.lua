@@ -72,20 +72,16 @@ AddEventHandler('gunfightarena:giveWeapon', function(weaponName, ammo)
     DebugLog("Demande d'arme reçue pour le joueur " .. src .. ": " .. weaponName)
     
     if detectedInventory == "qs-inventory" then
-        -- ✅ QS-INVENTORY (SYNTAXE CORRIGÉE)
         DebugLog("Utilisation de qs-inventory (serveur)")
         
-        -- Vérifier si le joueur a déjà l'arme
         local hasWeapon = exports['qs-inventory']:GetItemTotalAmount(src, weaponName)
         
         if not hasWeapon or hasWeapon == 0 then
-            -- ✅ CORRECTION : Utiliser la bonne syntaxe pour AddItem
             local success = exports['qs-inventory']:AddItem(src, weaponName, 1)
             
             if success then
                 DebugLog("Arme ajoutée avec succès à l'inventaire", "success")
                 
-                -- Ajouter les munitions si configuré
                 if Config.GiveAmmoSeparately and ammo > 0 then
                     local ammoType = Config.WeaponAmmoTypes[weaponName] or "ammo-9"
                     exports['qs-inventory']:AddItem(src, ammoType, ammo)
@@ -99,7 +95,6 @@ AddEventHandler('gunfightarena:giveWeapon', function(weaponName, ammo)
         end
         
     elseif detectedInventory == "ox_inventory" then
-        -- ✅ OX_INVENTORY
         DebugLog("Utilisation de ox_inventory (serveur)")
         
         local success = exports.ox_inventory:AddItem(src, weaponName, 1)
@@ -116,7 +111,6 @@ AddEventHandler('gunfightarena:giveWeapon', function(weaponName, ammo)
         end
         
     elseif detectedInventory == "qb-inventory" then
-        -- ✅ QB-INVENTORY
         DebugLog("Utilisation de qb-inventory (serveur)")
         
         local Player = QBCore.Functions.GetPlayer(src)
@@ -132,7 +126,6 @@ AddEventHandler('gunfightarena:giveWeapon', function(weaponName, ammo)
         end
         
     else
-        -- ✅ VANILLA - Rien à faire côté serveur pour les natives
         DebugLog("Mode vanilla - pas d'action serveur nécessaire")
     end
 end)
@@ -153,19 +146,16 @@ AddEventHandler('gunfightarena:removeWeapon', function(weaponName)
     DebugLog("Demande de retrait d'arme pour le joueur " .. src .. ": " .. weaponName)
     
     if detectedInventory == "qs-inventory" then
-        -- ✅ QS-INVENTORY (SYNTAXE CORRIGÉE v1.1)
         DebugLog("Utilisation de qs-inventory pour retirer l'arme (serveur)")
         
         local hasWeapon = exports['qs-inventory']:GetItemTotalAmount(src, weaponName)
         
         if hasWeapon and hasWeapon > 0 then
-            -- ✅ CORRECTION : Syntaxe simple sans callback
             local success = exports['qs-inventory']:RemoveItem(src, weaponName, 1)
             
             if success then
                 DebugLog("Arme retirée avec succès de l'inventaire", "success")
                 
-                -- Retirer les munitions si configuré
                 if Config.GiveAmmoSeparately then
                     local ammoType = Config.WeaponAmmoTypes[weaponName] or "ammo-9"
                     local ammoCount = exports['qs-inventory']:GetItemTotalAmount(src, ammoType)
@@ -183,7 +173,6 @@ AddEventHandler('gunfightarena:removeWeapon', function(weaponName)
         end
         
     elseif detectedInventory == "ox_inventory" then
-        -- ✅ OX_INVENTORY
         DebugLog("Utilisation de ox_inventory pour retirer l'arme (serveur)")
         
         local success = exports.ox_inventory:RemoveItem(src, weaponName, 1)
@@ -204,7 +193,6 @@ AddEventHandler('gunfightarena:removeWeapon', function(weaponName)
         end
         
     elseif detectedInventory == "qb-inventory" then
-        -- ✅ QB-INVENTORY
         DebugLog("Utilisation de qb-inventory pour retirer l'arme (serveur)")
         
         local Player = QBCore.Functions.GetPlayer(src)
@@ -224,7 +212,6 @@ AddEventHandler('gunfightarena:removeWeapon', function(weaponName)
         end
         
     else
-        -- ✅ VANILLA - Rien à faire côté serveur
         DebugLog("Mode vanilla - pas d'action serveur nécessaire")
     end
 end)
@@ -242,7 +229,6 @@ AddEventHandler('gunfightarena:removeAllWeapons', function()
     DebugLog("Demande de retrait de toutes les armes pour le joueur " .. src)
     
     if detectedInventory == "qs-inventory" then
-        -- Retirer l'arme de l'arène spécifiquement
         DebugLog("Retrait de toutes les armes (qs-inventory)")
         TriggerEvent('gunfightarena:removeWeapon', Config.WeaponHash)
         

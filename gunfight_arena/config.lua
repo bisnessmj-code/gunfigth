@@ -1,9 +1,10 @@
 -- ================================================================================================
--- GUNFIGHT ARENA - CONFIGURATION v3.2 (AVEC BRIDGE INVENTAIRE)
+-- GUNFIGHT ARENA - CONFIGURATION v3.3 (AVEC MESSAGE D'AIDE)
 -- ================================================================================================
 -- ✅ Auto-join DÉSACTIVÉ (entrée uniquement via PED)
 -- ✅ Sortie de zone = nettoyage automatique de l'instance
 -- ✅ Configuration du bridge d'inventaire
+-- ✅ NOUVEAU : Message d'aide en haut à gauche
 -- ================================================================================================
 
 Config = {}
@@ -16,6 +17,37 @@ Config.DebugClient = false
 Config.DebugServer = false
 Config.DebugNUI = false
 Config.DebugInstance = false
+
+-- ================================================================================================
+-- 🆕 MESSAGE D'AIDE EN JEU
+-- ================================================================================================
+Config.HelpMessage = {
+    enabled = true,                           -- Activer/désactiver le message
+    text = "Appuyez sur ~r~[G]~s~ pour voir les stats~n~Tapez ~r~/quittergf~s~ pour quitter l'arène",
+    position = {
+        x = 0.94,                           -- Position X (0.0 = gauche, 1.0 = droite)
+        y = 0.15                            -- Position Y (0.0 = haut, 1.0 = bas)
+    },
+    scale = 0.35,                            -- Taille du texte
+    font = 4,                                -- Police (0-7, 4 = chauffeur)
+    color = {
+        r = 255,
+        g = 255,
+        b = 255,
+        a = 215
+    },
+    backgroundColor = {
+        enabled = false,                      -- Fond semi-transparent
+        r = 0,
+        g = 0,
+        b = 0,
+        a = 150
+    },
+    padding = {
+        horizontal = 0.008,                  -- Padding horizontal du fond
+        vertical = 0.003                     -- Padding vertical du fond
+    }
+}
 
 -- ================================================================================================
 -- 🆕 CONFIGURATION DU BRIDGE D'INVENTAIRE
@@ -302,13 +334,15 @@ Config.Threads = {
     zoneMarker = 0,
     pedInteraction = 0,
     zoneCheck = 500,
-    autoJoin = 500
+    autoJoin = 500,
+    helpMessage = 0                          -- Thread du message d'aide (0 = chaque frame)
 }
 
 -- ================================================================================================
 -- FIN DE LA CONFIGURATION
 -- ================================================================================================
-print("^2[Gunfight Arena v3.2-Bridge]^0 Configuration chargée")
-print("^3[Gunfight Arena v3.2-Bridge]^0 Auto-join: ^1DÉSACTIVÉ^0 (entrée via PED uniquement)")
-print("^3[Gunfight Arena v3.2-Bridge]^0 Instances: " .. (Config.UseInstances and "^2ACTIVÉES" or "^1DÉSACTIVÉES"))
-print("^3[Gunfight Arena v3.2-Bridge]^0 Bridge inventaire: ^2" .. (Config.InventorySystem or "auto") .. "^0")
+--  print("^2[Gunfight Arena v3.3-Help]^0 Configuration chargée")
+--  print("^3[Gunfight Arena v3.3-Help]^0 Auto-join: ^1DÉSACTIVÉ^0 (entrée via PED uniquement)")
+--  print("^3[Gunfight Arena v3.3-Help]^0 Instances: " .. (Config.UseInstances and "^2ACTIVÉES" or "^1DÉSACTIVÉES"))
+--  print("^3[Gunfight Arena v3.3-Help]^0 Bridge inventaire: ^2" .. (Config.InventorySystem or "auto") .. "^0")
+--  print("^3[Gunfight Arena v3.3-Help]^0 Message d'aide: " .. (Config.HelpMessage.enabled and "^2ACTIVÉ" or "^1DÉSACTIVÉ"))

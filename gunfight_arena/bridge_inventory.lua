@@ -10,7 +10,7 @@ InventoryBridge = {}
 -- ================================================================================================
 -- CONFIGURATION
 -- ================================================================================================
-local inventoryType = Config.InventorySystem or "auto"  -- "auto", "qs-inventory", "ox_inventory", "qb-inventory", "vanilla"
+local inventoryType = Config.InventorySystem or "auto"
 local detectedInventory = "vanilla"
 
 -- ================================================================================================
@@ -22,25 +22,21 @@ local function DetectInventory()
         return inventoryType
     end
     
-    -- Détection de qs-inventory
     if GetResourceState('qs-inventory') == 'started' then
         detectedInventory = "qs-inventory"
         return "qs-inventory"
     end
     
-    -- Détection de ox_inventory
     if GetResourceState('ox_inventory') == 'started' then
         detectedInventory = "ox_inventory"
         return "ox_inventory"
     end
     
-    -- Détection de qb-inventory
     if GetResourceState('qb-inventory') == 'started' then
         detectedInventory = "qb-inventory"
         return "qb-inventory"
     end
     
-    -- Par défaut : vanilla (natives GTA)
     detectedInventory = "vanilla"
     return "vanilla"
 end
@@ -71,24 +67,19 @@ function InventoryBridge.GiveWeapon(weaponName, ammo)
     DebugLog("Tentative de donner l'arme: " .. weaponName .. " (Inventaire: " .. detectedInventory .. ")")
     
     if detectedInventory == "qs-inventory" then
-        -- ✅ QS-INVENTORY
         DebugLog("Utilisation de qs-inventory")
         
-        -- Vérifier si l'arme existe déjà
         local hasWeapon = exports['qs-inventory']:HasItem(weaponName, 1)
         
         if not hasWeapon then
-            -- Demander au serveur d'ajouter l'arme via l'inventaire
             TriggerServerEvent('gunfightarena:giveWeapon', weaponName, ammo)
             DebugLog("Demande serveur envoyée pour " .. weaponName, "success")
         else
             DebugLog("Le joueur possède déjà l'arme dans l'inventaire")
         end
         
-        -- Petit délai pour laisser le temps au serveur de traiter
         Citizen.Wait(100)
         
-        -- Équiper l'arme
         local weaponHash = GetHashKey(weaponName)
         if not HasPedGotWeapon(playerPed, weaponHash, false) then
             GiveWeaponToPed(playerPed, weaponHash, ammo, false, true)
@@ -99,7 +90,6 @@ function InventoryBridge.GiveWeapon(weaponName, ammo)
         success = true
         
     elseif detectedInventory == "ox_inventory" then
-        -- ✅ OX_INVENTORY
         DebugLog("Utilisation de ox_inventory")
         TriggerServerEvent('gunfightarena:giveWeapon', weaponName, ammo)
         Citizen.Wait(100)
@@ -109,7 +99,6 @@ function InventoryBridge.GiveWeapon(weaponName, ammo)
         success = true
         
     elseif detectedInventory == "qb-inventory" then
-        -- ✅ QB-INVENTORY
         DebugLog("Utilisation de qb-inventory")
         TriggerServerEvent('gunfightarena:giveWeapon', weaponName, ammo)
         Citizen.Wait(100)
@@ -119,7 +108,6 @@ function InventoryBridge.GiveWeapon(weaponName, ammo)
         success = true
         
     else
-        -- ✅ VANILLA (natives GTA)
         DebugLog("Utilisation du système vanilla")
         local weaponHash = GetHashKey(weaponName)
         GiveWeaponToPed(playerPed, weaponHash, ammo, false, true)
@@ -147,30 +135,24 @@ function InventoryBridge.RemoveWeapon(weaponName)
     DebugLog("Tentative de retirer l'arme: " .. weaponName .. " (Inventaire: " .. detectedInventory .. ")")
     
     if detectedInventory == "qs-inventory" then
-        -- ✅ QS-INVENTORY
         DebugLog("Utilisation de qs-inventory pour retirer l'arme")
         
-        -- Retirer l'arme du ped
         RemoveWeaponFromPed(playerPed, weaponHash)
         
-        -- Demander au serveur de retirer l'arme de l'inventaire
         TriggerServerEvent('gunfightarena:removeWeapon', weaponName)
         DebugLog("Demande de suppression envoyée au serveur", "success")
         
     elseif detectedInventory == "ox_inventory" then
-        -- ✅ OX_INVENTORY
         DebugLog("Utilisation de ox_inventory pour retirer l'arme")
         RemoveWeaponFromPed(playerPed, weaponHash)
         TriggerServerEvent('gunfightarena:removeWeapon', weaponName)
         
     elseif detectedInventory == "qb-inventory" then
-        -- ✅ QB-INVENTORY
         DebugLog("Utilisation de qb-inventory pour retirer l'arme")
         RemoveWeaponFromPed(playerPed, weaponHash)
         TriggerServerEvent('gunfightarena:removeWeapon', weaponName)
         
     else
-        -- ✅ VANILLA
         DebugLog("Utilisation du système vanilla pour retirer l'arme")
         RemoveWeaponFromPed(playerPed, weaponHash)
     end
@@ -186,10 +168,8 @@ function InventoryBridge.RemoveAllWeapons()
     
     DebugLog("Retrait de toutes les armes")
     
-    -- Retirer l'arme spécifique de l'arène
     InventoryBridge.RemoveWeapon(Config.WeaponHash)
     
-    -- Optionnel : retirer toutes les autres armes (selon config)
     if Config.RemoveAllWeaponsOnExit then
         RemoveAllPedWeapons(playerPed, true)
         

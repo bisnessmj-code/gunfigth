@@ -1,8 +1,9 @@
 -- ================================================================================================
--- GUNFIGHT ARENA - CLIENT v3.3 (NOTIFICATIONS CORRIGÉES)
+-- GUNFIGHT ARENA - CLIENT v3.4 (AVEC MESSAGE D'AIDE)
 -- ================================================================================================
 -- ✅ CORRECTION : Suppression des notifications spam
 -- ✅ Seulement kill feed + récompense visible
+-- ✅ NOUVEAU : Message d'aide en haut à gauche
 -- ================================================================================================
 
 if not CircleZone then
@@ -62,6 +63,76 @@ function Draw3DText(x, y, z, text)
         DrawText(_x, _y)
     end
 end
+
+-- ================================================================================================
+-- 🆕 FONCTION : AFFICHER LE MESSAGE D'AIDE
+-- ================================================================================================
+local function DrawHelpMessage()
+    if not Config.HelpMessage.enabled then return end
+    
+    local cfg = Config.HelpMessage
+    
+    -- Mesurer la taille du texte pour le fond
+    SetTextFont(cfg.font)
+    SetTextScale(cfg.scale, cfg.scale)
+    SetTextProportional(1)
+    
+    -- Préparer le texte pour mesurer sa largeur
+    BeginTextCommandGetWidth("STRING")
+    AddTextComponentSubstringPlayerName(cfg.text)
+    local textWidth = EndTextCommandGetWidth(true)
+    
+    -- Calculer la hauteur du texte (approximation basée sur le nombre de lignes)
+    local lines = 1
+    for _ in string.gmatch(cfg.text, "~n~") do
+        lines = lines + 1
+    end
+    local textHeight = (cfg.scale * 0.0185) * lines
+    
+    -- Dessiner le fond si activé
+    if cfg.backgroundColor.enabled then
+        local bgX = cfg.position.x + (textWidth / 2)
+        local bgY = cfg.position.y + (textHeight / 2)
+        local bgWidth = textWidth + (cfg.padding.horizontal * 2)
+        local bgHeight = textHeight + (cfg.padding.vertical * 2)
+        
+        DrawRect(
+            bgX,
+            bgY,
+            bgWidth,
+            bgHeight,
+            cfg.backgroundColor.r,
+            cfg.backgroundColor.g,
+            cfg.backgroundColor.b,
+            cfg.backgroundColor.a
+        )
+    end
+    
+    -- Dessiner le texte
+    SetTextFont(cfg.font)
+    SetTextScale(cfg.scale, cfg.scale)
+    SetTextProportional(1)
+    SetTextColour(cfg.color.r, cfg.color.g, cfg.color.b, cfg.color.a)
+    SetTextEntry("STRING")
+    SetTextJustification(0) -- Alignement à gauche
+    AddTextComponentSubstringPlayerName(cfg.text)
+    DrawText(cfg.position.x, cfg.position.y)
+end
+
+-- ================================================================================================
+-- 🆕 THREAD : AFFICHAGE DU MESSAGE D'AIDE EN JEU
+-- ================================================================================================
+Citizen.CreateThread(function()
+    DebugLog("Thread message d'aide démarré")
+    
+    while true do
+        Citizen.Wait(Config.Threads.helpMessage)
+        
+        if isInArena and Config.HelpMessage.enabled then
+            DrawHelpMessage()
+        end
+    end
+end)
 
 -- ================================================================================================
 -- CRÉATION DU BLIP DU LOBBY
@@ -243,7 +314,6 @@ AddEventHandler('gunfightarena:join', function(zoneIdentifier)
     end
 
     isInArena = true
-    -- ❌ SUPPRIMÉ : TriggerEvent('esx:showNotification', Config.Messages.enterArena)
 
     local zoneCfg = Config["Zone" .. currentZone]
     if zoneCfg and not arenaBlip then
@@ -291,7 +361,6 @@ AddEventHandler('gunfightarena:exitZone', function()
         
         isInArena = false
         justExited = true
-        -- ❌ SUPPRIMÉ : TriggerEvent('esx:showNotification', Config.Messages.exitArena)
         
         Citizen.Wait(3000)
         
@@ -334,9 +403,6 @@ AddEventHandler('gunfightarena:exit', function()
     
     if isInArena then
         isInArena = false
-        -- ❌ SUPPRIMÉ : TriggerEvent('esx:showNotification', Config.Messages.exitArena)
-    else
-        -- ❌ SUPPRIMÉ : TriggerEvent('esx:showNotification', Config.Messages.notInArena)
     end
     
     if arenaBlip then
@@ -391,7 +457,6 @@ Citizen.CreateThread(function()
                     TriggerServerEvent('gunfightarena:playerDied', randomIndex, killerServerId)
                 end
                 
-                -- ❌ SUPPRIMÉ : TriggerEvent('esx:showNotification', Config.Messages.playerDied)
                 Citizen.Wait(Config.RespawnDelay)
             end
         end
@@ -570,7 +635,8 @@ end)
 -- ================================================================================================
 Citizen.CreateThread(function()
     Wait(1000)
-    print("^2[Gunfight Arena v3.3-Fix]^0 Client démarré")
-    print("^3[Gunfight Arena v3.3-Fix]^0 Notifications spam supprimées")
-    print("^3[Gunfight Arena v3.3-Fix]^0 Touche G: Stats de zone en cours")
+    print("^2[Gunfight Arena v3.4-Help]^0 Client démarré")
+    print("^3[Gunfight Arena v3.4-Help]^0 Notifications spam supprimées")
+    print("^3[Gunfight Arena v3.4-Help]^0 Touche G: Stats de zone en cours")
+    print("^3[Gunfight Arena v3.4-Help]^0 Message d'aide: " .. (Config.HelpMessage.enabled and "ACTIVÉ" or "DÉSACTIVÉ"))
 end)
