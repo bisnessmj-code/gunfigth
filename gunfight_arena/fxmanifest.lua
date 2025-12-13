@@ -39,6 +39,8 @@ files {
     'html/images/zone2.png',
     'html/images/zone3.png',
     'html/images/zone4.png',
+    'html/images/zone5.png',
+    'html/images/logo.png',
     'html/images/default.png'
 }
 

@@ -142,7 +142,7 @@ if Config.LobbyBlip.enabled then
         DebugLog("Création blip lobby")
         local blip = AddBlipForCoord(Config.LobbyPed.pos.x, Config.LobbyPed.pos.y, Config.LobbyPed.pos.z)
         SetBlipSprite(blip, Config.LobbyBlip.sprite)
-        SetBlipDisplay(blip, 4)
+        SetBlipDisplay(blip, 5)
         SetBlipScale(blip, Config.LobbyBlip.scale)
         SetBlipColour(blip, Config.LobbyBlip.color)
         SetBlipAsShortRange(blip, true)
@@ -174,7 +174,7 @@ Citizen.CreateThread(function()
     
     DebugLog("Modèle chargé", "success")
     
-    lobbyPed = CreatePed(4, modelHash, Config.LobbyPed.pos.x, Config.LobbyPed.pos.y, Config.LobbyPed.pos.z, Config.LobbyPed.heading, false, true)
+    lobbyPed = CreatePed(5, modelHash, Config.LobbyPed.pos.x, Config.LobbyPed.pos.y, Config.LobbyPed.pos.z, Config.LobbyPed.heading, false, true)
     
     SetEntityAlpha(lobbyPed, 255, false)
     SetEntityAsMissionEntity(lobbyPed, true, true)
@@ -227,7 +227,7 @@ Citizen.CreateThread(function()
                 TriggerServerEvent('gunfightarena:requestZoneUpdate')
                 
                 local zoneData = {}
-                for i = 1, 4 do
+                for i = 1, 5 do
                     local zoneCfg = Config["Zone" .. i]
                     if zoneCfg and zoneCfg.enabled then
                         table.insert(zoneData, {

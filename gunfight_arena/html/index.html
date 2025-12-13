@@ -6,229 +6,200 @@
     <title>Gunfight Arena</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@300;400;500;600;700&family=Orbitron:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
+    <!-- KILL FEED -->
     <div id="killfeed-ui"></div>
     
-    <div id="arena-ui" class="arena-container">
-        <div class="arena-backdrop"></div>
-        <div class="arena-content arena-content-with-leaderboard">
-            <button id="close-btn" class="close-button">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <line x1="18" y1="6" x2="6" y2="18"></line>
-                    <line x1="6" y1="6" x2="18" y2="18"></line>
-                </svg>
-            </button>
+    <!-- INTERFACE PRINCIPALE PLEIN ÉCRAN -->
+    <div id="main-ui" class="main-container">
+        <!-- HEADER -->
+        <header class="app-header">
+            <div class="header-left">
+                <div class="app-logo">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 2L2 7l10 5 10-5-10-5z"></path>
+                        <path d="M2 17l10 5 10-5M2 12l10 5 10-5"></path>
+                    </svg>
+                    <span>GUNFIGHT ARENA</span>
+                </div>
+            </div>
             
-            <div class="arena-main-content">
-                <div class="arena-header">
-                    <div class="header-title">
-                        <h1>GUNFIGHT ARENA</h1>
-                        <div class="header-subtitle">SELECT YOUR BATTLEFIELD</div>
-                    </div>
-                    <div class="header-decoration">
-                        <div class="decoration-line"></div>
-                        <div class="decoration-dot"></div>
-                        <div class="decoration-line"></div>
-                    </div>
+			<div class="header-center-logo">
+                <img src="./images/logo.png" alt="Logo Principal Scharman">
+            </div>
+            
+            <div class="header-right">
+                <button id="close-main-btn" class="btn-icon" title="Fermer">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+        </header>
+
+        <!-- NAVIGATION TABS -->
+        <nav class="tab-navigation">
+            <button class="tab-btn active" data-tab="zones">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="3" width="7" height="7"></rect>
+                    <rect x="14" y="3" width="7" height="7"></rect>
+                    <rect x="14" y="14" width="7" height="7"></rect>
+                    <rect x="3" y="14" width="7" height="7"></rect>
+                </svg>
+                Zones de combat
+            </button>
+            <button class="tab-btn" data-tab="personal">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="12" cy="7" r="4"></circle>
+                </svg>
+                Mes statistiques
+            </button>
+            <button class="tab-btn" data-tab="global">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="8.5" cy="7" r="4"></circle>
+                    <line x1="23" y1="21" x2="23" y2="13"></line>
+                    <line x1="19" y1="21" x2="19" y2="15"></line>
+                </svg>
+                Classement mondial
+            </button>
+        </nav>
+
+        <!-- CONTENU DES TABS -->
+        <main class="tab-content-wrapper">
+            <!-- TAB 1: ZONES DE COMBAT -->
+            <div id="tab-zones" class="tab-content active">
+                <div class="content-header">
+                    <h1>Sélectionnez votre zone de combat</h1>
+                    <p class="subtitle">Choisissez une arène disponible pour commencer</p>
                 </div>
-                
-                <div class="stats-buttons">
-                    <button id="personal-stats-btn" class="stats-nav-button">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                            <circle cx="12" cy="7" r="4"></circle>
-                        </svg>
-                        MES STATS
-                    </button>
-                </div>
-                
                 <div id="zone-list" class="zone-grid"></div>
-                
-                <div class="arena-footer">
-                    <div class="footer-indicator">
-                        <span class="indicator-pulse"></span>
-                        <span>ONLINE</span>
-                    </div>
-                </div>
             </div>
 
-            <div class="lobby-leaderboard-sidebar">
-                <div class="sidebar-header">
-                    <div class="sidebar-title">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-                            <circle cx="8.5" cy="7" r="4"></circle>
-                            <line x1="23" y1="21" x2="23" y2="13"></line>
-                            <line x1="19" y1="21" x2="19" y2="15"></line>
-                        </svg>
-                        <span>TOP PLAYERS</span>
-                    </div>
-                    <button id="view-full-leaderboard" class="view-full-btn" title="Voir le classement complet">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <polyline points="9 18 15 12 9 6"></polyline>
-                        </svg>
-                    </button>
+            <!-- TAB 2: STATISTIQUES PERSONNELLES -->
+            <div id="tab-personal" class="tab-content">
+                <div class="content-header">
+                    <h1>Mes statistiques</h1>
+                    <p class="subtitle" id="personal-player-name">Votre profil de joueur</p>
                 </div>
                 
-                <div id="lobby-leaderboard-list" class="lobby-leaderboard-list">
-                    <div class="leaderboard-loading">
-                        <div class="loading-spinner"></div>
-                        <p>Chargement...</p>
+                <div class="stats-overview">
+                    <div class="stat-card">
+                        <div class="stat-icon">⚔️</div>
+                        <div class="stat-details">
+                            <span class="stat-label">Éliminations</span>
+                            <span class="stat-value" id="personal-kills">0</span>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">💀</div>
+                        <div class="stat-details">
+                            <span class="stat-label">Morts</span>
+                            <span class="stat-value" id="personal-deaths">0</span>
+                        </div>
+                    </div>
+                    <div class="stat-card highlight">
+                        <div class="stat-icon">📊</div>
+                        <div class="stat-details">
+                            <span class="stat-label">Ratio K/D</span>
+                            <span class="stat-value" id="personal-kd">0.00</span>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">🔥</div>
+                        <div class="stat-details">
+                            <span class="stat-label">Meilleur série</span>
+                            <span class="stat-value" id="personal-streak">0</span>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">🎯</div>
+                        <div class="stat-details">
+                            <span class="stat-label">Headshots</span>
+                            <span class="stat-value" id="personal-headshots">0</span>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">⏱️</div>
+                        <div class="stat-details">
+                            <span class="stat-label">Temps de jeu</span>
+                            <span class="stat-value" id="personal-playtime">0h</span>
+                        </div>
                     </div>
                 </div>
+
+                <div class="session-panel">
+                    <h3>Session actuelle</h3>
+                    <div class="session-stats">
+                        <div class="session-item">
+                            <span class="session-label">Kills</span>
+                            <span class="session-value" id="session-kills">0</span>
+                        </div>
+                        <div class="session-item">
+                            <span class="session-label">Morts</span>
+                            <span class="session-value" id="session-deaths">0</span>
+                        </div>
+                        <div class="session-item">
+                            <span class="session-label">Série actuelle</span>
+                            <span class="session-value" id="current-streak">0</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 3: CLASSEMENT MONDIAL -->
+            <div id="tab-global" class="tab-content">
+                <div class="content-header">
+                    <h1>Classement mondial</h1>
+                    <p class="subtitle">Top joueurs de l'arène</p>
+                </div>
+                
+                <div class="leaderboard-table">
+                    <div class="table-header">
+                        <div class="th rank-col">Rang</div>
+                        <div class="th player-col">Joueur</div>
+                        <div class="th stat-col">Kills</div>
+                        <div class="th stat-col">Morts</div>
+                        <div class="th stat-col">Série</div>
+                        <div class="th stat-col">K/D</div>
+                    </div>
+                    <div id="global-leaderboard-list" class="table-body"></div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- UI STATS EN JEU (G KEY) -->
+    <div id="ingame-stats-ui" class="overlay-panel">
+        <div class="panel-backdrop"></div>
+        <div class="panel-content">
+            <div class="panel-header">
+                <h2>Classement de la zone</h2>
+                <button id="ingame-stats-close" class="btn-icon">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+            <div class="leaderboard-table compact">
+                <div class="table-header">
+                    <div class="th rank-col">Rang</div>
+                    <div class="th player-col">Joueur</div>
+                    <div class="th stat-col">Kills</div>
+                    <div class="th stat-col">Morts</div>
+                    <div class="th stat-col">K/D</div>
+                </div>
+                <div id="ingame-stats-list" class="table-body"></div>
             </div>
         </div>
     </div>
 
-    <div id="stats-ui" class="stats-container">
-        <div class="stats-backdrop"></div>
-        <div class="stats-content">
-            <button id="stats-close-btn" class="close-button">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <line x1="18" y1="6" x2="6" y2="18"></line>
-                    <line x1="6" y1="6" x2="18" y2="18"></line>
-                </svg>
-            </button>
-            
-            <div class="stats-header">
-                <div class="header-title">
-                    <h1>LEADERBOARD</h1>
-                    <div class="header-subtitle">TOP FIGHTERS</div>
-                </div>
-                <div class="header-decoration">
-                    <div class="decoration-line"></div>
-                    <div class="decoration-dot"></div>
-                    <div class="decoration-line"></div>
-                </div>
-            </div>
-            
-            <div class="stats-table-container">
-                <div class="stats-table-header">
-                    <div class="stats-col rank-col">RANK</div>
-                    <div class="stats-col player-col">PLAYER</div>
-                    <div class="stats-col kills-col">KILLS</div>
-                    <div class="stats-col deaths-col">DEATHS</div>
-                    <div class="stats-col kd-col">K/D</div>
-                </div>
-                <div id="stats-list" class="stats-table-body"></div>
-            </div>
-        </div>
-    </div>
-
-    <div id="personal-stats-ui" class="stats-container">
-        <div class="stats-backdrop"></div>
-        <div class="stats-content personal-stats-content">
-            <button id="personal-stats-close-btn" class="close-button">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <line x1="18" y1="6" x2="6" y2="18"></line>
-                    <line x1="6" y1="6" x2="18" y2="18"></line>
-                </svg>
-            </button>
-            
-            <div class="stats-header">
-                <div class="header-title">
-                    <h1>MES STATISTIQUES</h1>
-                    <div class="header-subtitle" id="personal-player-name">VOTRE PROFIL</div>
-                </div>
-                <div class="header-decoration">
-                    <div class="decoration-line"></div>
-                    <div class="decoration-dot"></div>
-                    <div class="decoration-line"></div>
-                </div>
-            </div>
-            
-            <div class="personal-stats-grid">
-                <div class="stat-card stat-card-primary">
-                    <div class="stat-icon">⚔️</div>
-                    <div class="stat-value" id="personal-kills">0</div>
-                    <div class="stat-label">KILLS</div>
-                </div>
-                <div class="stat-card stat-card-danger">
-                    <div class="stat-icon">💀</div>
-                    <div class="stat-value" id="personal-deaths">0</div>
-                    <div class="stat-label">DEATHS</div>
-                </div>
-                <div class="stat-card stat-card-warning">
-                    <div class="stat-icon">📊</div>
-                    <div class="stat-value" id="personal-kd">0.00</div>
-                    <div class="stat-label">K/D RATIO</div>
-                </div>
-                <div class="stat-card stat-card-success">
-                    <div class="stat-icon">🔥</div>
-                    <div class="stat-value" id="personal-streak">0</div>
-                    <div class="stat-label">BEST STREAK</div>
-                </div>
-                <div class="stat-card stat-card-info">
-                    <div class="stat-icon">🎯</div>
-                    <div class="stat-value" id="personal-headshots">0</div>
-                    <div class="stat-label">HEADSHOTS</div>
-                </div>
-                <div class="stat-card stat-card-time">
-                    <div class="stat-icon">⏱️</div>
-                    <div class="stat-value" id="personal-playtime">0h</div>
-                    <div class="stat-label">TEMPS DE JEU</div>
-                </div>
-            </div>
-            
-            <div class="session-stats">
-                <h3>SESSION ACTUELLE</h3>
-                <div class="session-grid">
-                    <div class="session-stat">
-                        <span class="session-label">Kills:</span>
-                        <span class="session-value" id="session-kills">0</span>
-                    </div>
-                    <div class="session-stat">
-                        <span class="session-label">Deaths:</span>
-                        <span class="session-value" id="session-deaths">0</span>
-                    </div>
-                    <div class="session-stat">
-                        <span class="session-label">Streak actuel:</span>
-                        <span class="session-value" id="current-streak">0</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div id="global-leaderboard-ui" class="stats-container">
-        <div class="stats-backdrop"></div>
-        <div class="stats-content global-leaderboard-content">
-            <button id="global-leaderboard-close-btn" class="close-button">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <line x1="18" y1="6" x2="6" y2="18"></line>
-                    <line x1="6" y1="6" x2="18" y2="18"></line>
-                </svg>
-            </button>
-            
-            <div class="stats-header">
-                <div class="header-title">
-                    <h1>CLASSEMENT MONDIAL</h1>
-                    <div class="header-subtitle">TOP JOUEURS</div>
-                </div>
-                <div class="header-decoration">
-                    <div class="decoration-line"></div>
-                    <div class="decoration-dot"></div>
-                    <div class="decoration-line"></div>
-                </div>
-            </div>
-            
-            <div class="stats-table-container">
-                <div class="stats-table-header global-table-header">
-                    <div class="stats-col rank-col">RANG</div>
-                    <div class="stats-col player-col">JOUEUR</div>
-                    <div class="stats-col kills-col">KILLS</div>
-                    <div class="stats-col deaths-col">MORTS</div>
-                    <div class="stats-col streak-col">STREAK</div>
-                    <div class="stats-col kd-col">K/D</div>
-                </div>
-                <div id="global-leaderboard-list" class="stats-table-body"></div>
-            </div>
-        </div>
-    </div>
-    
     <script src="script.js"></script>
 </body>
 </html>

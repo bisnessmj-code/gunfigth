@@ -12,7 +12,7 @@ local ESX = exports['es_extended']:getSharedObject()
 local arenaPlayers = {}
 local playerZone = {}
 local playerBucket = {}
-local zonePlayerCounts = {[1]=0,[2]=0,[3]=0,[4]=0}
+local zonePlayerCounts = {[1]=0,[2]=0,[3]=0,[4]=0,[5]=0}
 local PlayerStats = {}
 local killStreaks = {}
 local playerJoinTime = {}
@@ -24,7 +24,8 @@ local zoneSessionStats = {
     [1] = {},
     [2] = {},
     [3] = {},
-    [4] = {}
+    [4] = {},
+    [5] = {}
 }
 
 -- ================================================================================================

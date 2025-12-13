@@ -1,13 +1,13 @@
 // ================================
-// GUNFIGHT ARENA - SCRIPT.JS (VERSION AMÉLIORÉE - SANS HS)
-// Fix focus NUI : libération uniquement depuis le jeu, pas depuis le lobby
+// GUNFIGHT ARENA - SCRIPT.JS (VERSION PROFESSIONNELLE)
+// Système d'onglets et interface plein écran
 // ================================
 
 // ================================
-// GLOBAL VARIABLES
+// VARIABLES GLOBALES
 // ================================
 let currentZoneData = [];
-let lobbyLeaderboardCache = [];
+let currentActiveTab = 'zones';
 
 // ================================
 // EVENT LISTENER - NUI MESSAGES
@@ -20,10 +20,10 @@ window.addEventListener('message', (event) => {
             if (data.zones && data.zones.length > 0) {
                 currentZoneData = data.zones;
             }
-            showUI();
+            showMainUI();
             break;
         case 'showStats':
-            showStats(data.stats);
+            showIngameStats(data.stats);
             break;
         case 'showPersonalStats':
             showPersonalStats(data.stats);
@@ -32,7 +32,7 @@ window.addEventListener('message', (event) => {
             showGlobalLeaderboard(data.stats);
             break;
         case 'showLobbyScoreboard':
-            displayLobbyLeaderboard(data.stats);
+            // Non utilisé dans cette version
             break;
         case 'killFeed':
             addKillFeedMessage(data.message);
@@ -47,93 +47,127 @@ window.addEventListener('message', (event) => {
 });
 
 // ================================
-// DOM READY - BUTTON LISTENERS
+// DOM READY - LISTENERS
 // ================================
 document.addEventListener('DOMContentLoaded', () => {
-    const closeBtn = document.getElementById('close-btn');
-    if (closeBtn) {
-        closeBtn.addEventListener('click', () => {
-            closeUI();
+    // Bouton fermeture interface principale
+    const closeMainBtn = document.getElementById('close-main-btn');
+    if (closeMainBtn) {
+        closeMainBtn.addEventListener('click', () => {
+            closeMainUI();
         });
     }
 
-    const statsCloseBtn = document.getElementById('stats-close-btn');
-    if (statsCloseBtn) {
-        statsCloseBtn.addEventListener('click', () => {
-            closeStatsUI();
+    // Navigation tabs
+    const tabButtons = document.querySelectorAll('.tab-btn');
+    tabButtons.forEach(btn => {
+        btn.addEventListener('click', () => {
+            const tabName = btn.getAttribute('data-tab');
+            switchTab(tabName);
+        });
+    });
+
+    // Bouton fermeture stats en jeu (G key)
+    const ingameStatsClose = document.getElementById('ingame-stats-close');
+    if (ingameStatsClose) {
+        ingameStatsClose.addEventListener('click', () => {
+            closeIngameStats();
         });
     }
 
-    const personalStatsBtn = document.getElementById('personal-stats-btn');
-    if (personalStatsBtn) {
-        personalStatsBtn.addEventListener('click', () => {
-            postNUIMessage('getPersonalStats', {});
-        });
-    }
-
-    const viewFullBtn = document.getElementById('view-full-leaderboard');
-    if (viewFullBtn) {
-        viewFullBtn.addEventListener('click', () => {
-            postNUIMessage('getGlobalLeaderboard', {});
-        });
-    }
-
-    const personalStatsCloseBtn = document.getElementById('personal-stats-close-btn');
-    if (personalStatsCloseBtn) {
-        personalStatsCloseBtn.addEventListener('click', () => {
-            closePersonalStatsUI();
-        });
-    }
-
-    const globalLeaderboardCloseBtn = document.getElementById('global-leaderboard-close-btn');
-    if (globalLeaderboardCloseBtn) {
-        globalLeaderboardCloseBtn.addEventListener('click', () => {
-            closeGlobalLeaderboardUI();
-        });
-    }
-
+    // ESC key handling
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
-            const arenaUI = document.getElementById('arena-ui');
-            const statsUI = document.getElementById('stats-ui');
-            const personalStatsUI = document.getElementById('personal-stats-ui');
-            const globalLeaderboardUI = document.getElementById('global-leaderboard-ui');
+            const mainUI = document.getElementById('main-ui');
+            const ingameUI = document.getElementById('ingame-stats-ui');
             
-            if (arenaUI && arenaUI.style.display === 'flex') {
-                closeUI();
-            } else if (statsUI && statsUI.style.display === 'flex') {
-                closeStatsUI();
-            } else if (personalStatsUI && personalStatsUI.style.display === 'flex') {
-                closePersonalStatsUI();
-            } else if (globalLeaderboardUI && globalLeaderboardUI.style.display === 'flex') {
-                closeGlobalLeaderboardUI();
+            if (mainUI && mainUI.classList.contains('active')) {
+                closeMainUI();
+            } else if (ingameUI && ingameUI.classList.contains('active')) {
+                closeIngameStats();
             }
         }
     });
 });
 
 // ================================
-// ZONE SELECTION UI
+// SYSTÈME D'ONGLETS
 // ================================
-function showUI() {
-    const arenaUI = document.getElementById('arena-ui');
-    const zoneList = document.getElementById('zone-list');
-    
-    if (!arenaUI || !zoneList) {
-        return;
+function switchTab(tabName) {
+    // Mise à jour des boutons
+    const tabButtons = document.querySelectorAll('.tab-btn');
+    tabButtons.forEach(btn => {
+        if (btn.getAttribute('data-tab') === tabName) {
+            btn.classList.add('active');
+        } else {
+            btn.classList.remove('active');
+        }
+    });
+
+    // Mise à jour du contenu
+    const tabContents = document.querySelectorAll('.tab-content');
+    tabContents.forEach(content => {
+        if (content.id === `tab-${tabName}`) {
+            content.classList.add('active');
+        } else {
+            content.classList.remove('active');
+        }
+    });
+
+    currentActiveTab = tabName;
+
+    // Charger les données si nécessaire
+    if (tabName === 'personal') {
+        postNUIMessage('getPersonalStats', {});
+    } else if (tabName === 'global') {
+        postNUIMessage('getGlobalLeaderboard', {});
     }
+}
+
+// ================================
+// INTERFACE PRINCIPALE (LOBBY)
+// ================================
+function showMainUI() {
+    const mainUI = document.getElementById('main-ui');
+    if (!mainUI) return;
+
+    // Afficher l'interface
+    mainUI.classList.add('active');
+
+    // Revenir à l'onglet zones
+    switchTab('zones');
+
+    // Remplir la liste des zones
+    renderZones();
+}
+
+function closeMainUI() {
+    const mainUI = document.getElementById('main-ui');
+    if (mainUI) {
+        mainUI.classList.remove('active');
+    }
+    
+    postNUIMessage('closeUI', {});
+}
+
+function renderZones() {
+    const zoneList = document.getElementById('zone-list');
+    if (!zoneList) return;
 
     zoneList.innerHTML = "";
 
-    currentZoneData.forEach((zone, index) => {
+    currentZoneData.forEach((zone) => {
         const card = document.createElement('div');
         card.className = "zone-card";
         card.setAttribute("data-zone", zone.zone);
-        card.style.animationDelay = `${index * 0.1}s`;
 
         const maxPlayers = zone.maxPlayers || 15;
         const currentPlayers = zone.players || 0;
         const isFull = currentPlayers >= maxPlayers;
+
+        if (isFull) {
+            card.setAttribute("data-full", "true");
+        }
 
         card.innerHTML = `
             <img class="zone-image" src="${zone.image || 'images/default.png'}" alt="${zone.label || 'Zone ' + zone.zone}">
@@ -141,7 +175,7 @@ function showUI() {
                 <div class="zone-text">${zone.label || 'Zone ' + zone.zone}</div>
                 <div class="zone-players">
                     <span class="players-count">${currentPlayers}/${maxPlayers}</span>
-                    <span class="zone-status ${isFull ? 'full' : ''}">${isFull ? 'FULL' : 'ACTIVE'}</span>
+                    <span class="zone-status ${isFull ? 'full' : ''}">${isFull ? 'COMPLET' : 'DISPONIBLE'}</span>
                 </div>
             </div>
         `;
@@ -150,49 +184,25 @@ function showUI() {
             card.addEventListener('click', () => {
                 selectZone(zone.zone);
             });
-        } else {
-            card.style.opacity = '0.5';
-            card.style.cursor = 'not-allowed';
         }
 
         zoneList.appendChild(card);
     });
-
-    arenaUI.style.display = 'flex';
-    postNUIMessage('getLobbyScoreboard', {});
-}
-
-function closeUI() {
-    const arenaUI = document.getElementById('arena-ui');
-    if (arenaUI) {
-        arenaUI.style.display = 'none';
-    }
-    
-    fetch(`https://${GetParentResourceName()}/closeUI`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json; charset=UTF-8' },
-        body: JSON.stringify({})
-    }).catch(err => {});
 }
 
 function selectZone(zoneNumber) {
-    fetch(`https://${GetParentResourceName()}/zoneSelected`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json; charset=UTF-8' },
-        body: JSON.stringify({ zone: zoneNumber })
-    }).then(() => {
-        closeUI();
-    }).catch(err => {});
+    postNUIMessage('zoneSelected', { zone: zoneNumber });
+    closeMainUI();
 }
 
 // ================================
-// UPDATE ZONE PLAYERS COUNT
+// UPDATE ZONE PLAYERS
 // ================================
 function updateZonePlayers(zones) {
     currentZoneData = zones;
 
-    const arenaUI = document.getElementById('arena-ui');
-    if (arenaUI && arenaUI.style.display === 'flex') {
+    const mainUI = document.getElementById('main-ui');
+    if (mainUI && mainUI.classList.contains('active') && currentActiveTab === 'zones') {
         zones.forEach((zone) => {
             const card = document.querySelector(`.zone-card[data-zone="${zone.zone}"]`);
             if (card) {
@@ -208,17 +218,15 @@ function updateZonePlayers(zones) {
                 }
 
                 if (status) {
-                    status.textContent = isFull ? 'FULL' : 'ACTIVE';
+                    status.textContent = isFull ? 'COMPLET' : 'DISPONIBLE';
                     status.classList.toggle('full', isFull);
                 }
 
                 if (isFull) {
-                    card.style.opacity = '0.5';
-                    card.style.cursor = 'not-allowed';
+                    card.setAttribute("data-full", "true");
                     card.onclick = null;
                 } else {
-                    card.style.opacity = '1';
-                    card.style.cursor = 'pointer';
+                    card.removeAttribute("data-full");
                     card.onclick = () => selectZone(zone.zone);
                 }
             }
@@ -227,69 +235,16 @@ function updateZonePlayers(zones) {
 }
 
 // ================================
-// LEADERBOARD UI (EN JEU - Touche G)
-// ================================
-function showStats(stats) {
-    const statsUI = document.getElementById('stats-ui');
-    const statsList = document.getElementById('stats-list');
-    
-    if (!statsUI || !statsList) {
-        return;
-    }
-
-    statsList.innerHTML = "";
-
-    stats.forEach((item, index) => {
-        const row = document.createElement('div');
-        row.className = "stats-row";
-        row.style.animationDelay = `${index * 0.05}s`;
-
-        const rank = index + 1;
-        const kdValue = parseFloat(item.kd) || 0;
-
-        row.innerHTML = `
-            <div class="stats-col rank-col">
-                <div class="rank-badge">${rank}</div>
-            </div>
-            <div class="stats-col player-col">${item.player || 'Inconnu'}</div>
-            <div class="stats-col kills-col">${item.kills || 0}</div>
-            <div class="stats-col deaths-col">${item.deaths || 0}</div>
-            <div class="stats-col kd-col">${kdValue.toFixed(2)}</div>
-        `;
-
-        statsList.appendChild(row);
-    });
-
-    statsUI.style.display = 'flex';
-}
-
-function closeStatsUI() {
-    const statsUI = document.getElementById('stats-ui');
-    if (statsUI) {
-        statsUI.style.display = 'none';
-    }
-    
-    fetch(`https://${GetParentResourceName()}/closeStatsUI`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json; charset=UTF-8' },
-        body: JSON.stringify({})
-    }).catch(err => {});
-}
-
-// ================================
-// PERSONAL STATS UI (DEPUIS LE LOBBY)
+// STATISTIQUES PERSONNELLES (TAB)
 // ================================
 function showPersonalStats(stats) {
-    const personalStatsUI = document.getElementById('personal-stats-ui');
-    if (!personalStatsUI) {
-        return;
-    }
-
+    // Mise à jour du nom du joueur
     const playerNameEl = document.getElementById('personal-player-name');
     if (playerNameEl) {
-        playerNameEl.textContent = stats.player || "VOTRE PROFIL";
+        playerNameEl.textContent = stats.player || "Votre profil de joueur";
     }
 
+    // Mise à jour des statistiques
     const kdValue = parseFloat(stats.kd) || 0;
 
     const elements = {
@@ -308,6 +263,7 @@ function showPersonalStats(stats) {
         }
     }
 
+    // Session actuelle
     const sessionKills = document.getElementById('session-kills');
     if (sessionKills) sessionKills.textContent = stats.session_kills || 0;
 
@@ -316,125 +272,79 @@ function showPersonalStats(stats) {
 
     const currentStreak = document.getElementById('current-streak');
     if (currentStreak) currentStreak.textContent = stats.current_streak || 0;
-
-    personalStatsUI.style.display = 'flex';
-}
-
-function closePersonalStatsUI() {
-    const personalStatsUI = document.getElementById('personal-stats-ui');
-    if (personalStatsUI) {
-        personalStatsUI.style.display = 'none';
-    }
-    
-    fetch(`https://${GetParentResourceName()}/closePersonalStatsUI`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json; charset=UTF-8' },
-        body: JSON.stringify({})
-    }).catch(err => {});
 }
 
 // ================================
-// GLOBAL LEADERBOARD UI (AMÉLIORÉ - SANS HS)
+// CLASSEMENT MONDIAL (TAB)
 // ================================
 function showGlobalLeaderboard(stats) {
-    const globalLeaderboardUI = document.getElementById('global-leaderboard-ui');
     const leaderboardList = document.getElementById('global-leaderboard-list');
-    
-    if (!globalLeaderboardUI || !leaderboardList) {
-        return;
-    }
+    if (!leaderboardList) return;
 
     leaderboardList.innerHTML = "";
 
     stats.forEach((item) => {
         const row = document.createElement('div');
-        row.className = "stats-row";
-        row.style.animationDelay = `${item.rank * 0.05}s`;
+        row.className = "table-row";
 
         const kdValue = parseFloat(item.kd) || 0;
 
-        // ✨ NOUVEAU : Plus de colonne headshots
         row.innerHTML = `
-            <div class="stats-col rank-col">
+            <div class="td rank-col">
                 <div class="rank-badge">${item.rank}</div>
             </div>
-            <div class="stats-col player-col">${item.player || 'Inconnu'}</div>
-            <div class="stats-col kills-col">${item.kills || 0}</div>
-            <div class="stats-col deaths-col">${item.deaths || 0}</div>
-            <div class="stats-col streak-col">${item.best_streak || 0}</div>
-            <div class="stats-col kd-col">${kdValue.toFixed(2)}</div>
+            <div class="td player-col">${item.player || 'Inconnu'}</div>
+            <div class="td stat-col">${item.kills || 0}</div>
+            <div class="td stat-col">${item.deaths || 0}</div>
+            <div class="td stat-col">${item.best_streak || 0}</div>
+            <div class="td stat-col">${kdValue.toFixed(2)}</div>
         `;
 
         leaderboardList.appendChild(row);
     });
-
-    globalLeaderboardUI.style.display = 'flex';
 }
 
-function closeGlobalLeaderboardUI() {
-    const globalLeaderboardUI = document.getElementById('global-leaderboard-ui');
-    if (globalLeaderboardUI) {
-        globalLeaderboardUI.style.display = 'none';
+// ================================
+// STATS EN JEU (TOUCHE G)
+// ================================
+function showIngameStats(stats) {
+    const ingameUI = document.getElementById('ingame-stats-ui');
+    const statsList = document.getElementById('ingame-stats-list');
+    
+    if (!ingameUI || !statsList) return;
+
+    statsList.innerHTML = "";
+
+    stats.forEach((item, index) => {
+        const row = document.createElement('div');
+        row.className = "table-row";
+
+        const rank = index + 1;
+        const kdValue = parseFloat(item.kd) || 0;
+
+        row.innerHTML = `
+            <div class="td rank-col">
+                <div class="rank-badge">${rank}</div>
+            </div>
+            <div class="td player-col">${item.player || 'Inconnu'}</div>
+            <div class="td stat-col">${item.kills || 0}</div>
+            <div class="td stat-col">${item.deaths || 0}</div>
+            <div class="td stat-col">${kdValue.toFixed(2)}</div>
+        `;
+
+        statsList.appendChild(row);
+    });
+
+    ingameUI.classList.add('active');
+}
+
+function closeIngameStats() {
+    const ingameUI = document.getElementById('ingame-stats-ui');
+    if (ingameUI) {
+        ingameUI.classList.remove('active');
     }
     
-    fetch(`https://${GetParentResourceName()}/closeGlobalLeaderboardUI`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json; charset=UTF-8' },
-        body: JSON.stringify({})
-    }).catch(err => {});
-}
-
-// ================================
-// LOBBY LEADERBOARD SIDEBAR
-// ================================
-function displayLobbyLeaderboard(stats) {
-    const lobbyList = document.getElementById('lobby-leaderboard-list');
-    if (!lobbyList) return;
-
-    lobbyLeaderboardCache = stats;
-    lobbyList.innerHTML = '';
-
-    const top10 = stats.slice(0, 10);
-
-    if (top10.length === 0) {
-        lobbyList.innerHTML = `
-            <div class="leaderboard-loading">
-                <p style="text-align: center; color: var(--text-secondary);">
-                    Aucun classement disponible.<br>
-                    Soyez le premier à jouer !
-                </p>
-            </div>
-        `;
-        return;
-    }
-
-    top10.forEach((player) => {
-        const entry = document.createElement('div');
-        entry.className = 'lobby-leaderboard-entry';
-        entry.style.animationDelay = `${player.rank * 0.05}s`;
-
-        const kdValue = parseFloat(player.kd) || 0;
-
-        entry.innerHTML = `
-            <div class="lobby-rank">${player.rank}</div>
-            <div class="lobby-player-info">
-                <div class="lobby-player-name">${player.player || 'Inconnu'}</div>
-                <div class="lobby-player-stats">
-                    <div class="lobby-stat">
-                        <span class="lobby-stat-label">K:</span>
-                        <span class="lobby-stat-value">${player.kills || 0}</span>
-                    </div>
-                    <div class="lobby-stat">
-                        <span class="lobby-stat-label">D:</span>
-                        <span class="lobby-stat-value">${player.deaths || 0}</span>
-                    </div>
-                </div>
-            </div>
-            <div class="lobby-kd">${kdValue.toFixed(2)}</div>
-        `;
-
-        lobbyList.appendChild(entry);
-    });
+    postNUIMessage('closeStatsUI', {});
 }
 
 // ================================
@@ -442,18 +352,14 @@ function displayLobbyLeaderboard(stats) {
 // ================================
 function addKillFeedMessage(message) {
     const killfeedUI = document.getElementById('killfeed-ui');
-    if (!killfeedUI) {
-        return;
-    }
+    if (!killfeedUI) return;
 
     const messageDiv = document.createElement('div');
     messageDiv.className = 'killfeed-message';
 
-    let iconHTML = '';
+    let iconHTML = '<div class="kill-icon">⚔️</div>';
     if (message.headshot) {
-        iconHTML = `<div class="kill-icon headshot">💀</div>`;
-    } else {
-        iconHTML = `<div class="kill-icon">⚔️</div>`;
+        iconHTML = '<div class="kill-icon">💀</div>';
     }
 
     let multiplierHTML = '';
@@ -488,7 +394,7 @@ function clearKillFeed() {
 }
 
 // ================================
-// UTILITY FUNCTIONS
+// FONCTIONS UTILITAIRES
 // ================================
 function formatPlaytime(seconds) {
     if (seconds < 60) {
